@@ -1,0 +1,19 @@
+{
+  "name": "swell-tag",
+  "version": "0.0.1",
+  "description": "node utils for going exif -> query against db",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "exif-to-swell.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "^1.5.5-r.1",
+    "exifreader": "^4.41.3"
+  }
+}

@@ -1,0 +1,11 @@
+.DS_Store
+latest_obs/*
+scratch/*
+node_modules
+__pycache__
+logs/*
+data/*.csv
+data/*.parquet
+.cache
+ndbc.db*
+.tmp

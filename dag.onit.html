@@ -1,0 +1,19 @@
+<div>
+  <div id="sqlglot-lineage"></div>
+  <script type="text/javascript" src="https://unpkg.com/vis-data@latest/peer/umd/vis-data.min.js"></script>
+  <script type="text/javascript" src="https://unpkg.com/vis-network@latest/peer/umd/vis-network.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/vis-network/styles/vis-network.min.css" />
+  <script type="text/javascript">
+    var nodes = new vis.DataSet([{"id": "\"ndbc\".\"ushlc\".\"stations\"", "label": "\"stations\"", "title": "<span>\"ndbc\".\"ushlc\".\"stations\"</span>"}, {"id": "\"ndbc\".\"coop\".\"stations\"", "label": "\"stations\"", "title": "<span>\"ndbc\".\"coop\".\"stations\"</span>"}, {"id": "\"ndbc\".\"ndbc_duck\".\"standard_measurements\"", "label": "\"standard_measurements\"", "title": "<span>\"ndbc\".\"ndbc_duck\".\"standard_measurements\"</span>"}, {"id": "\"ndbc\".\"ndbc_duck\".\"raw_measurements\"", "label": "\"raw_measurements\"", "title": "<span>\"ndbc\".\"ndbc_duck\".\"raw_measurements\"</span>"}, {"id": "\"ndbc\".\"ndbc_duck\".\"raw_measurements_latest_obs\"", "label": "\"raw_measurements_latest_obs\"", "title": "<span>\"ndbc\".\"ndbc_duck\".\"raw_measurements_latest_obs\"</span>"}, {"id": "\"ndbc\".\"ndbc_duck\".\"bouy_history\"", "label": "\"bouy_history\"", "title": "<span>\"ndbc\".\"ndbc_duck\".\"bouy_history\"</span>"}, {"id": "\"ndbc\".\"ndbc_duck\".\"raw_measurements_realtime\"", "label": "\"raw_measurements_realtime\"", "title": "<span>\"ndbc\".\"ndbc_duck\".\"raw_measurements_realtime\"</span>"}, {"id": "\"ndbc\".\"ushlc\".\"station_measurements\"", "label": "\"station_measurements\"", "title": "<span>\"ndbc\".\"ushlc\".\"station_measurements\"</span>"}, {"id": "\"ndbc\".\"isd_duck\".\"raw_measurements_isd\"", "label": "\"raw_measurements_isd\"", "title": "<span>\"ndbc\".\"isd_duck\".\"raw_measurements_isd\"</span>"}, {"id": "\"ndbc\".\"isd_duck\".\"weather_stations\"", "label": "\"weather_stations\"", "title": "<span>\"ndbc\".\"isd_duck\".\"weather_stations\"</span>"}, {"id": "\"ndbc\".\"swell\".\"tags\"", "label": "\"tags\"", "title": "<span>\"ndbc\".\"swell\".\"tags\"</span>"}])
+    nodes.forEach(row => row["title"] = new DOMParser().parseFromString(row["title"], "text/html").body.childNodes[0])
+
+    new vis.Network(
+        document.getElementById("sqlglot-lineage"),
+        {
+            nodes: nodes,
+            edges: new vis.DataSet([{"from": "\"ndbc\".\"ndbc_duck\".\"raw_measurements\"", "to": "\"ndbc\".\"ndbc_duck\".\"standard_measurements\""}, {"from": "\"ndbc\".\"ndbc_duck\".\"raw_measurements_latest_obs\"", "to": "\"ndbc\".\"ndbc_duck\".\"standard_measurements\""}, {"from": "\"ndbc\".\"ndbc_duck\".\"bouy_history\"", "to": "\"ndbc\".\"ndbc_duck\".\"standard_measurements\""}, {"from": "\"ndbc\".\"ndbc_duck\".\"raw_measurements_realtime\"", "to": "\"ndbc\".\"ndbc_duck\".\"standard_measurements\""}, {"from": "\"ndbc\".\"ushlc\".\"stations\"", "to": "\"ndbc\".\"ushlc\".\"station_measurements\""}, {"from": "\"ndbc\".\"isd_duck\".\"weather_stations\"", "to": "\"ndbc\".\"isd_duck\".\"raw_measurements_isd\""}, {"from": "\"ndbc\".\"ushlc\".\"station_measurements\"", "to": "\"ndbc\".\"swell\".\"tags\""}, {"from": "\"ndbc\".\"ndbc_duck\".\"standard_measurements\"", "to": "\"ndbc\".\"swell\".\"tags\""}])
+        },
+        {"height": "100%", "width": "100%", "layout": {"hierarchical": {"enabled": true, "nodeSpacing": 200, "sortMethod": "directed"}}, "interaction": {}, "physics": {"enabled": false}, "edges": {"arrows": "to"}, "nodes": {"shape": "box"}},
+    )
+  </script>
+</div>
