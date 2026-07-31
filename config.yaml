@@ -1,5 +1,6 @@
 variables:
-  parent_quadkey: '032010' # quadkey at 6 over nj...
+  # hey this empty list will ignore the spatial filter!
+  parent_quadkey: "{{ env_var('PARENT_QUADKEY', '') }}"
 
 # --- Gateway Connection ---
 gateways:
@@ -17,7 +18,8 @@ gateways:
       # schema_differ_overrides: 
       # catalog_type_overrides: 
       # catalogs: 
-      # extensions: 
+      extensions: 
+      - spatial
       # connector_config: 
       # secrets: 
       # filesystems: 

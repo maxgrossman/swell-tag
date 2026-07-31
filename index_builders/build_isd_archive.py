@@ -29,7 +29,7 @@ def get_object_keys(s3_client, bucket_name, start_year, end_year):
 def main():
     s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
     with tempfile.NamedTemporaryFile(delete=True) as tmp_file:
-        all_keys = list(get_object_keys(s3_client, 'noaa-global-hourly-pds', 2018, 2019))
+        all_keys = list(get_object_keys(s3_client, 'noaa-global-hourly-pds', 2022, 2023))
         tmp_file.write('\n'.join(all_keys).encode('utf-8'))
         connection = duckdb.connect('ndbc.db')
         connection.install_extension('spatial')
