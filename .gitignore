@@ -6,6 +6,7 @@ __pycache__
 logs/*
 data/*.csv
 data/*.parquet
+data/*json
 .cache
 ndbc.db*
 .tmp

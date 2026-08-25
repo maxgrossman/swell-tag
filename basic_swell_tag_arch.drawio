@@ -1,0 +1,53 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="g_3l6WD8qjO86mGWPBuv">
+    <mxGraphModel dx="1928" dy="1510" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-17" edge="1" parent="1" source="C5-4tAkYri7Fm2jMWNVz-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=none;fontColor=default;" target="C5-4tAkYri7Fm2jMWNVz-14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-18" edge="1" parent="1" source="C5-4tAkYri7Fm2jMWNVz-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=none;fontColor=default;" target="C5-4tAkYri7Fm2jMWNVz-16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-3" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;rounded=1;labelBackgroundColor=none;" value="STEP FUNCTION ARCHIVE LOAD PIPELINES" vertex="1">
+          <mxGeometry height="70" width="170" x="475" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-10" edge="1" parent="1" source="C5-4tAkYri7Fm2jMWNVz-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.001;entryY=0.003;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;fontColor=default;" target="C5-4tAkYri7Fm2jMWNVz-3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="345" y="378.66999999999996" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-4" parent="1" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;rounded=1;labelBackgroundColor=none;" value="era5 s3" vertex="1">
+          <mxGeometry height="70" width="70" x="205" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-11" edge="1" parent="1" source="C5-4tAkYri7Fm2jMWNVz-5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=none;fontColor=default;" target="C5-4tAkYri7Fm2jMWNVz-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-5" parent="1" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;rounded=1;labelBackgroundColor=none;" value="ndbc archive site" vertex="1">
+          <mxGeometry height="80" width="70" x="205" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-13" edge="1" parent="1" source="C5-4tAkYri7Fm2jMWNVz-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.002;entryY=0.998;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;fontColor=default;" target="C5-4tAkYri7Fm2jMWNVz-3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="355" y="465" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-6" parent="1" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;rounded=1;labelBackgroundColor=none;" value="ushlc tide archie" vertex="1">
+          <mxGeometry height="80" width="70" x="205" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-21" edge="1" parent="1" source="C5-4tAkYri7Fm2jMWNVz-14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=none;fontColor=default;" target="C5-4tAkYri7Fm2jMWNVz-19" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-14" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rounded=1;labelBackgroundColor=none;" value="SWELL TAG DUCKLAKE" vertex="1">
+          <mxGeometry height="90" width="80" x="815" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-16" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rounded=1;labelBackgroundColor=none;" value="duckdb state database&amp;nbsp;" vertex="1">
+          <mxGeometry height="90" width="80" x="520" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="C5-4tAkYri7Fm2jMWNVz-19" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;rounded=1;labelBackgroundColor=none;" value="R2 public swell tag ducklake" vertex="1">
+          <mxGeometry height="90" width="80" x="815" y="525" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

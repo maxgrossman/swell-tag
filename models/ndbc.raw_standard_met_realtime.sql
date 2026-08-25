@@ -4,7 +4,7 @@ MODEL(
         time_column timestamp_tz
     ),
     cron '@hourly',
-    start '2000-01-01',
+    start '2026-07-01',
     columns (
         station_id varchar,
         timestamp_tz timestamptz,
@@ -17,15 +17,15 @@ SET threads=4; SET force_download=true;
 SET VARIABLE realtime_urls = (
     SELECT list(realtime_url) FROM (
         select realtime_url from read_csv('data/ndbc.realtime.csv') 
-        where start_time between start_fmt and end_fmt
-          and end_time between start_fmt and end_fmt
+         where start_time <= @end_dt and 
+               end_time >= @start_dt
     )
 );
 
 WITH parsed_lines AS 
     (SELECT str_split(filename,'realtime2/')[2][:5] AS station_id, 
             str_split(regexp_replace(column0,'\s+',',', 'g'),',') AS line
-    FROM read_csv({station_realtime_list},comment='#',header=false,skip=1)),
+    FROM read_csv(getvariable('realtime_urls'),comment='#',header=false,skip=1)),
 -- go get the max timestamp we have from the historical archive.
 max_station_lines AS 
     (SELECT station_id, max(timestamp_tz) AS max_timestamp_tz

@@ -26,7 +26,7 @@ WITH
 parsed_lines as 
     (SELECT str_split(filename,'stdmet/')[2][:5] as station_id, 
             str_split(regexp_replace(column0,'\s+',',', 'g'),',') as line
-        FROM read_csv({station_archives_list}, comment='#', header=false, skip=1)),
+        FROM read_csv(getvariable('archive_urls'), comment='#', header=false, skip=1)),
 table_lines as 
     (SELECT station_id, 
             MAKE_TIMESTAMPTZ(

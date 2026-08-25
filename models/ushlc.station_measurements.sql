@@ -1,11 +1,3 @@
--- from sqlmesh import model
--- from sqlmesh.core.model.kind import ModelKindName
--- from helpers import df_with_geometry_column
-
--- import sqlmesh.cli as cli
-
-
-
 MODEL(
     name ushlc.station_measurements,
     kind INCREMENTAL_BY_TIME_RANGE (
@@ -17,9 +9,11 @@ MODEL(
 SET VARIABLE station_archives = (
     SELECT list(archive_url) FROM (
         FROM read_csv('data/ushlc.archive.csv') as arch_index
-        JOIN ushlc.stations ON ushlc.stations.uh_id=arch_index.uh_id and ushlc.stations.version=arch_index.version
+        JOIN ushlc.stations 
+         ON ushlc.stations.uh_id=arch_index.uh_id 
+        AND ushlc.stations.version=arch_index.version
         -- do that range intersection!
-        WHERE start_time <= @start_dt and end_time >= @end_dt
+        WHERE start_time <= @end_dt AND end_time >= @start_dt
     )
 );
 
@@ -37,7 +31,7 @@ select
     hrly.timestamp_tz,
     hrly.reading_mm,
     ushlc.stations.geometry as geometry,
-    ushlc.stations.quadkey as quadkey
+    ushlc.stations.h3_04
 from hrly
 join ushlc.stations on hrly.uh_id=ushlc.stations.uh_id and 
         hrly.version=ushlc.stations.version

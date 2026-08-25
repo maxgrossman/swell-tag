@@ -10,7 +10,8 @@ MODEL(
         type varchar,
         start_time timestamptz,
         end_time timestamptz,
-        geometry blob,
+        geometry geometry,
+        h3_04 uint64,
         elev double,
         met varchar,
         hull varchar,
@@ -18,8 +19,9 @@ MODEL(
     )
 );
   
-INSTALL spatial; INSTALL webbed FROM community;
-LOAD webbed; LOAD spatial;
+INSTALL spatial; LOAD spatial;
+INSTALL webbed FROM community; LOAD webbed; 
+INSTALL h3 FROM community; LOAD h3; 
 
 WITH station_xml as 
     (SELECT *, unnest(history) as hist
@@ -34,9 +36,10 @@ SELECT
     strptime(hist.start, '%Y-%m-%d')::timestamptz as start_time,
     strptime(hist.stop, '%Y-%m-%d')::timestamptz as end_time,
     ST_Point(hist.lng::double, hist.lat::double) as geometry,
+    h3_latlng_to_cell(hist.lat::double, hist.lng::double, 4) as h3_04,
     hist.elev::double as elev,
     hist.met as met,
     hist.hull as hull,
     hist.anemom_height::double as anemom_height
 FROM station_xml
-ORDER BY station_id, start_time
+ORDER BY h3_04, station_id, start_time

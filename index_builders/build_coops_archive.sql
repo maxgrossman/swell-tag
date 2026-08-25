@@ -2,25 +2,52 @@ INSTALL crawler from community;
 LOAD crawler;
 INSTALL webbed from community;
 LOAD webbed;
+INSTALL spatial;
+LOAD spatial;
+INSTALL h3 from community;
+LOAD h3;
 
+SET GLOBAL crawler_timeout_ms = 60000; -- 15 seconds
+SET GLOBAL threads = 4;
 SET variable linkies = (
     select list(links) from (
-        select 'https://www.ngdc.noaa.gov/thredds/catalog/nos_coops/wl_1min/processed/' || Dataset || '/catalog.html' as links 
-        from read_html('https://www.ngdc.noaa.gov/thredds/catalog/nos_coops/wl_1min/processed/sitemap.html', 'table', 1) offset 1
+        select 'https://opendap.co-ops.nos.noaa.gov/axis/webservices/datainventory/response.jsp?stationId=' || id || '&format=html&Submit=Submit' as links
+        from (select id, name, geom from st_read('data/coops.hist.geojson') union all
+              select id, name, geom from st_read('data/coops.act.geojson'))
     )
 );
 
 COPY (
-    WITH 
-    table_rows as 
-        (select unnest(tr) as rowz from read_html(getvariable('linkies'), root_element='table')), 
-    table_tds as 
-        (select unnest(rowz.td) as tds from table_rows where rowz.td is not null),
-    archive_links as 
-        (select 'https://www.ngdc.noaa.gov/thredds/fileServer/nos_coops/wl_1min/processed/' || str_split(tds.a.code, '_')[1] || '/' || tds.a.code as link
-        from table_tds where tds.a.code is not null and tds.a.code like '%qc.csv.gz%')
-    select link, 
-        strptime(regexp_extract(link, '\d{8}to\d{8}')[:8], '%Y%m%d') as start_time,
-        strptime(regexp_extract(link, '\d{8}to\d{8}')[-8:], '%Y%m%d') as end_time 
-    from archive_links
+    with 
+    xml_docs as (
+        select xml_to_json(html['document'])::json as page_json
+        from crawl(getvariable('linkies'))
+    ), 
+    xml_parameters as (
+        select 
+            json_extract(page_json,'$.Envelope.Body.DataInventory.station.@ID')::varchar as station_id,
+            json_extract(page_json,'$.Envelope.Body.DataInventory.station.metadata.location.long.#text')::varchar as lon,
+            json_extract(page_json,'$.Envelope.Body.DataInventory.station.metadata.location.lat.#text')::varchar as lat,
+            list_filter(list_zip(
+                json_extract(page_json,'$.Envelope.Body.DataInventory.station.parameter[*].@name'),
+                json_extract(page_json,'$.Envelope.Body.DataInventory.station.parameter[*].@first'),
+                json_extract(page_json,'$.Envelope.Body.DataInventory.station.parameter[*].@last')
+            ), lambda l: l[1] = '"Verified 6-Minute Water Level"')[1] as tide_range
+        from xml_docs
+    )
+    select 
+        replace(station_id, '"'::varchar, ''::varchar) as station_id,
+        st_point(
+            replace(lon, '"'::varchar,''::varchar)::double, 
+            replace(lat,'"'::varchar,''::varchar)::double
+        ) as geom,  
+        strptime(
+            replace((tide_range::json->'*')[2]::varchar || '+00:00', '"'::varchar,''::varchar),
+            '%Y-%m-%d %H:%M%z'
+        )::timestamptz as time_start, 
+        strptime(
+            replace((tide_range::json->'*')[3]::varchar || '+00:00', '"'::varchar,''::varchar),
+            '%Y-%m-%d %H:%M%z'
+        )::timestamptz as time_end
+    from xml_parameters
 ) TO 'data/coops.archive.csv'

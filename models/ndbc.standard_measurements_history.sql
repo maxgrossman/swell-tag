@@ -11,7 +11,7 @@ MODEL(
         timestamp_tz timestamptz,
         station_sk int,
         geometry geometry,
-        quadkey varchar,
+        h3_04 uint64,
         wind_direction int,
         wind_speed double,
         wind_gust double,
@@ -28,8 +28,8 @@ MODEL(
     )
 );
 
-INSTALL spatial; 
-LOAD spatial;
+INSTALL spatial; LOAD spatial;
+INSTALL h3 from community; LOAD h3;
 
 WITH 
 -- FIRST GET ALL THE RAW OBSERVATIONS ACROSS THE THREE TABLES THAT ARE IN THE TIME WINDOW
@@ -65,14 +65,18 @@ raw_latest_obs AS
     AND ndbc_duck.raw_measurements_latest_obs.timestamp_tz BETWEEN @start_dt AND @end_dt),
 all_raw_obs AS 
     (SELECT station_id, timestamp_tz, line from raw_history
-    UNION ALL
-    SELECT station_id, timestamp_tz, line from raw_realtime
-    UNION ALL
-    SELECT station_id, timestamp_tz, line from raw_realtime),
+     UNION ALL
+     SELECT station_id, timestamp_tz, line from raw_realtime
+     UNION ALL
+     SELECT station_id, timestamp_tz, line from raw_realtime),
 -- THEN HANDLE ANY DUPLICATES ACROSS TABLES WITH A DISTINCT ON, PLUS TIE I TTO THE BOUY TABLE
 new_raw_obs as  
     (SELECT DISTINCT ON (station_id, timestamp_tz) 
-        all_raw_obs.station_id, timestamp_tz, line, bouy_history.station_sk, bouy_history.geometry
+        all_raw_obs.station_id, 
+        timestamp_tz, line, 
+        bouy_history.station_sk, 
+        bouy_history.geometry, 
+        bouy_history.h3_04
     FROM all_raw_obs
     JOIN ndbc_duck.bouy_history
     ON timestamp_tz <= coalesce(ndbc_duck.bouy_history.end_time, timestamp_tz)
@@ -84,7 +88,7 @@ SELECT
     new_raw_obs.timestamp_tz,
     new_raw_obs.station_sk,
     new_raw_obs.geometry,
-    st_quadkey(new_raw_obs.geometry, 8) as quadkey,
+    new_raw_obs.h3_04,
     coalesce(try_cast(new_raw_obs.line[6] as int), 999)::int as wind_direction,
     coalesce(try_cast(new_raw_obs.line[7] as double),999.9)::double as wind_speed,
     coalesce(try_cast(new_raw_obs.line[8] as double),999.9)::double as wind_gust,
