@@ -46,7 +46,7 @@ def main():
     # make sure we've got the the bouy table the other guys rely on.
     run_shell_cmd(['venv/bin/sqlmesh', '--log-to-stdout', 'plan', '--auto-apply','--skip-backfill'])
     run_shell_cmd(['venv/bin/sqlmesh', '--log-to-stdout', 'run', '--select-model','ndbc_duck.bouy_history'])
-    run_shell_cmd(['venv/bin/sqlmesh', '--log-to-stdout', 'run', '--select-model','ushlc.weather_stations'])
+    run_shell_cmd(['venv/bin/sqlmesh', '--log-to-stdout', 'run', '--select-model','ushlc.stations'])
     # make sure we have all of the index files
     run_shell_cmd(['make', 'data_index'])
 

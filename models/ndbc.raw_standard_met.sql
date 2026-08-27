@@ -46,4 +46,4 @@ table_lines as
 SELECT station_id, timestamp_tz, line
 FROM table_lines
 WHERE timestamp_tz BETWEEN @start_dt AND  @end_dt
-ORDER BY station_id, timestamp_tz;
+ORDER BY station_id, timestamp_tz; -- hey maybe it just naturally is sorted by the person giving us this data.

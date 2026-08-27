@@ -56,7 +56,7 @@ select timestamp_tz, h3_04,
        idw_measured_wave_direction::double,
        tide_meters::double,
        round(wind_speed::double,2),
-       round(wind_direction::double,2)]::double[7] as swell_tag
+       round(wind_direction::double,2)] as swell_tag
 from swell_tag_data
 where wind_speed is not null and 
       tide_meters is not null and

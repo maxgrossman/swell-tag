@@ -11,7 +11,14 @@ gateways:
       # https://sqlmesh.readthedocs.io/en/stable/reference/configuration/#connection
       # https://sqlmesh.readthedocs.io/en/stable/integrations/engines/duckdb/#connection-options
       type: duckdb
-      database: ndbc.db
+      database: data/swell_tags.db
+      # catalogs:
+      #   swell_lakehouse:
+      #     type: ducklake
+      #     path: data/swell.ducklake
+      #     data_path: data/swell_storage
+      #     data_inlining_row_limit: 100000
+        
       # concurrent_tasks: 1
       # register_comments: True
       # pre_ping: False
@@ -20,12 +27,11 @@ gateways:
       # catalog_type_overrides: 
       # catalogs: 
       extensions: 
-      - spatial
-      # connector_config: 
-      # secrets: 
-      # filesystems: 
-      # token: 
-
+        - spatial
+        - ducklake
+    # state_connection:
+    #   type: duckdb
+    #   database: 'data/sqlmesh_state.db'
 default_gateway: duckdb
 
 # --- Model Defaults ---
@@ -46,3 +52,5 @@ linter:
     # - ambiguousorinvalidcolumn
     - invalidselectstarexpansion
     - noambiguousprojections
+
+

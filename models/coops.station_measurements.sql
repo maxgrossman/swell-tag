@@ -12,7 +12,7 @@ MODEL(
     )
 );
 
-SET threads = 2;
+SET threads = 4;
 INSTALL h3 from community;
 LOAD h3;
 INSTALL spatial;

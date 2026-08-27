@@ -17,6 +17,8 @@ SET VARIABLE station_archives = (
     )
 );
 
+SET threads=4;
+
 with hrly as (
     select 
         filename[-8:-6] as uh_id, 
