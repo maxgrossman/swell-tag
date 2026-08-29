@@ -16,8 +16,8 @@ SET threads=4; SET force_download=true;
 
 SET VARIABLE realtime_urls = (
     SELECT list(realtime_url) FROM (
-        select realtime_url from read_csv('data/ndbc.realtime.csv') 
-         where start_time <= @end_dt and 
+        select realtime_url from ndbc_duck.archive_realtime
+        where start_time <= @end_dt and 
                end_time >= @start_dt
     )
 );

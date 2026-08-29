@@ -19,7 +19,7 @@ INSTALL h3 from community; LOAD h3;
 
 set variable era5_10u_archive_list = (
     select list(parquet_path) from (
-        select parquet_path from 'data/era5.10uv.archive.csv'
+        select parquet_path from era5_duck.archive 
         where start_timestamp_tz <= @end_dt and 
               end_timestamp_tz >= @start_dt and 
               parquet_path ~* '10u'   
@@ -28,7 +28,7 @@ set variable era5_10u_archive_list = (
 
 set variable era5_10v_archive_list = (
     select list(parquet_path) from (
-        select parquet_path from 'data/era5.10uv.archive.csv'
+        select parquet_path from era5_duck.archive 
         where start_timestamp_tz <= @end_dt and 
               end_timestamp_tz >= @start_dt and 
               parquet_path ~* '10v'   

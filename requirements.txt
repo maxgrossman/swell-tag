@@ -5,3 +5,4 @@ boto3
 flask
 flask_cors
 esridump
+pytest

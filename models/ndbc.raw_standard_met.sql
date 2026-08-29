@@ -14,12 +14,11 @@ MODEL(
 SET VARIABLE archive_urls = (
     SELECT list(archive_url) FROM (
         SELECT archive_url 
-        FROM read_csv('data/ndbc.archive.csv')
+        FROM ndbc_duck.archive
         WHERE timestamp_tz BETWEEN @start_dt AND @end_dt
     )
 );
 
--- so not to go too ham sammy on memory
 SET threads=4;
 
 WITH 
@@ -46,4 +45,4 @@ table_lines as
 SELECT station_id, timestamp_tz, line
 FROM table_lines
 WHERE timestamp_tz BETWEEN @start_dt AND  @end_dt
-ORDER BY station_id, timestamp_tz; -- hey maybe it just naturally is sorted by the person giving us this data.
+ORDER BY station_id, timestamp_tz; 

@@ -7,6 +7,9 @@ logs/*
 data/*.csv
 data/*.parquet
 data/*json
+data/*.db*
+data/swell_storage
+data/swell.ducklake
 .cache
 ndbc.db*
 .tmp

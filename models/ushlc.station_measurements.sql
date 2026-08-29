@@ -8,7 +8,7 @@ MODEL(
 
 SET VARIABLE station_archives = (
     SELECT list(archive_url) FROM (
-        FROM read_csv('data/ushlc.archive.csv') as arch_index
+        FROM ushlc.archive as arch_index
         JOIN ushlc.stations 
          ON ushlc.stations.uh_id=arch_index.uh_id 
         AND ushlc.stations.version=arch_index.version

@@ -1,38 +1,31 @@
-variables:
-  # hey this empty list will ignore the spatial filter!
-  parent_quadkey: "{{ env_var('PARENT_QUADKEY', '') }}"
-  parent_bbox: "{{ env_var('PARENT_BBOX', 'POLYGON ((-117.611081 32.528832, -117.611081 33.505025, -116.08094 33.505025, -116.08094 32.528832, -117.611081 32.528832))') }}"
-
 # --- Gateway Connection ---
+disable_anonymized_analytics: true
 gateways:
-  duckdb:
+  duckdb_local:
+    state_connection: 
+      type: duckdb
+      database: data/sqlmesh_state.db
     connection:
-      # For more information on configuring the connection to your execution engine, visit:
-      # https://sqlmesh.readthedocs.io/en/stable/reference/configuration/#connection
-      # https://sqlmesh.readthedocs.io/en/stable/integrations/engines/duckdb/#connection-options
       type: duckdb
       database: data/swell_tags.db
-      # catalogs:
-      #   swell_lakehouse:
-      #     type: ducklake
-      #     path: data/swell.ducklake
-      #     data_path: data/swell_storage
-      #     data_inlining_row_limit: 100000
-        
-      # concurrent_tasks: 1
-      # register_comments: True
-      # pre_ping: False
-      # pretty_sql: False
-      # schema_differ_overrides: 
-      # catalog_type_overrides: 
-      # catalogs: 
       extensions: 
         - spatial
-        - ducklake
-    # state_connection:
-    #   type: duckdb
-    #   database: 'data/sqlmesh_state.db'
-default_gateway: duckdb
+  duckdb_s3:
+    state_connection: 
+      type: duckdb
+      database: data/sqlmesh_state.db
+    connection:
+      type: duckdb
+      database: s3://swell-tags-data/swell_tags.db
+      extensions: 
+        - spatial
+        - httpfs
+      secrets:
+        - type: s3
+          region: {{ env_var('AWS_REGION') }}
+          key_id: {{ env_var('AWS_ACCESS_KEY_ID') }}
+          secret: {{ env_var('AWS_SECRET_ACCESS_KEY') }}
+default_gateway: duckdb_local
 
 # --- Model Defaults ---
 # https://sqlmesh.readthedocs.io/en/stable/reference/model_configuration/#model-defaults
