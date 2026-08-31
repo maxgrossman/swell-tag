@@ -80,7 +80,7 @@ def handler_ensure_dependencies(event, context):
 def handler_build_missing_intervals(event, context):
     context = sqlmesh.Context(paths='.')
     all_intervals = []
-    for model in constants.RAW_MODELS:
+    for model in constants.BACKFILLABLE_MODELS:
         check = context.check_intervals(
             environment=event.get('environment', 'prod'),
             no_signals=False,
@@ -100,4 +100,7 @@ def handler_build_missing_intervals(event, context):
     for interval in all_merged_isos:
         final_intervals = final_intervals + split_year(interval,[])
 
-    return {'missing_intervals':final_intervals}
+    return {
+        'ranges': final_intervals, 
+        'models': constants.BACKFILLABLE_MODELS
+    }

@@ -1,3 +1,43 @@
+variable "step_lambdas" {
+  type    = list(string)
+  default = [
+    "handler_ensure_dependencies",
+    "handler_initialize_models",
+    "get_new_archives_handler",
+    "era5_netcdf_to_geoparquet_handler",
+    "handler_build_missing_intervals",
+    "handler_select_interval"
+  ]
+}
+
+variable "lambda_layers" {
+  type    = list(string)
+  default = [
+    "python_layer",
+    "handler_layer",
+    "sqlmesh_layer"
+  ]
+}
+
+variable "aws_region" {
+  type =     string
+  default = "us-east-1" 
+}
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+
+# Configure the AWS Provider
+provider "aws" {
+  region = var.aws_region
+}
+
 data "aws_iam_role" "power_user" {
   name = "AWSReservedSSO_PowerUserAccess_5a9ad12fe69c1818"
 }
@@ -43,7 +83,24 @@ resource "terraform_data" "python_layer_deps" {
   }
 }
 
-# Create the ZIP file
+resource "terraform_data" "sqlmesh_layer_deps" {
+  triggers_replace = { 
+    models = jsonencode({
+      for fn in fileset("${path.module}/models", "**") :
+      fn => filesha256("${path.module}/models/${fn}")
+    })
+    config = filesha256("${path.module}/config.yml")
+  } 
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      rm -rf layers/sqlmesh/package/models
+      cp -r models layers/sqlmesh/package/models
+      cp config.yml layers/sqlmesh/package
+    EOT
+  }
+}
+
 data "archive_file" "python_layer" {
   type        = "zip"
   source_dir  = "${path.module}/layers/python/package"
@@ -52,23 +109,25 @@ data "archive_file" "python_layer" {
   depends_on = [terraform_data.python_layer_deps]
 }
 
-# Create the Lambda layer
+data "archive_file" "handler_layer" {
+  type        = "zip"
+  source_dir  = "${path.module}/layers/handlers/package"
+  output_path = "${path.module}/layers/handlers/layer.zip"
+}
+
+data "archive_file" "sqlmesh_layer" {
+  type        = "zip"
+  source_file = "${path.module}/config.yml"
+  output_path = "${path.module}/layers/sqlmesh/layer.zip"
+}
+
 resource "aws_lambda_layer_version" "python_deps" {
   layer_name          = "python-common-deps"
   description         = "Common Python dependencies (requests, boto3, etc.)"
   filename            = data.archive_file.python_layer.output_path
   source_code_hash    = data.archive_file.python_layer.output_base64sha256
   compatible_runtimes = ["python3.12"]
-
-  # Optional: compatible architectures
   compatible_architectures = ["x86_64"]
-}
-
-# Package shared utility code
-data "archive_file" "handler_layer" {
-  type        = "zip"
-  source_dir  = "${path.module}/layers/handlers/package"
-  output_path = "${path.module}/layers/handlers/layer.zip"
 }
 
 resource "aws_lambda_layer_version" "handlers" {
@@ -79,9 +138,18 @@ resource "aws_lambda_layer_version" "handlers" {
   compatible_runtimes = ["python3.12"]
 }
 
-resource "aws_lambda_function" "validate_baseline" {
-  function_name = "validate_baseline"
-  handler       = "handlers.handler_ensure_dependencies"
+resource "aws_lambda_layer_version" "sqlmesh" {
+  layer_name          = "sqlmesh-layer"
+  description         = "the sqlmesh config and models"
+  filename            = data.archive_file.sqlmesh_layer.output_path
+  source_code_hash    = data.archive_file.sqlmesh_layer.output_base64sha256
+  compatible_runtimes = ["python3.12"]
+}
+
+resource "aws_lambda_function" "function" {
+  for_each = var.step_lambdas
+  function_name = each.value
+  handler       = "handlers.${each.value}"
   runtime       = "python3.12"
   role          = aws_iam_role.swell_tags_step.arn
 
@@ -91,54 +159,11 @@ resource "aws_lambda_function" "validate_baseline" {
   layers = [
     aws_lambda_layer_version.python_deps.arn,
     aws_lambda_layer_version.handlers.arn,
+    aws_lambda_layer_version.sqlmesh.arn
   ]
 
   tags = {
-    Name = "validate_baseline"
-    Environment = "Prod"
-    Service = "lambda"
-    ManagedBy = "terraform"
-  }
-}
-
-resource "aws_lambda_function" "get_new_archives_handler" {
-  function_name = "get_new_archives_handler"
-  handler       = "handlers.get_new_archives_handler"
-  runtime       = "python3.12"
-  role          = aws_iam_role.swell_tags_step.arn
-
-  filename         = data.archive_file.api.output_path
-  source_code_hash = data.archive_file.api.output_base64sha256
-
-  layers = [
-    aws_lambda_layer_version.python_deps.arn,
-    aws_lambda_layer_version.handlers.arn
-  ]
-
-  tags = {
-    Name = "get_new_archives_handler"
-    Environment = "Prod"
-    Service = "lambda"
-    ManagedBy = "terraform"
-  }
-}
-
-resource "aws_lambda_function" "era5_netcdf_to_geoparquet_handler" {
-  function_name = "era5_netcdf_to_geoparquet_handler"
-  handler       = "handlers.era5_netcdf_to_geoparquet_handler"
-  runtime       = "python3.12"
-  role          = aws_iam_role.swell_tags_step.arn
-
-  filename         = data.archive_file.api.output_path
-  source_code_hash = data.archive_file.api.output_base64sha256
-
-  layers = [
-    aws_lambda_layer_version.python_deps.arn,
-    aws_lambda_layer_version.handlers.arn
-  ]
-
-  tags = {
-    Name = "era5_netcdf_to_geoparquet_handler"
+    Name = "${each.value}"
     Environment = "Prod"
     Service = "lambda"
     ManagedBy = "terraform"
@@ -147,7 +172,7 @@ resource "aws_lambda_function" "era5_netcdf_to_geoparquet_handler" {
 
 data "aws_iam_policy_document" "swell_tags_policy" {
   statement {
-    sid    = "SwellTagsDeny"
+    sid    = "SwellTagsAllow"
     effect = "Allow"
 
     principals {
@@ -179,7 +204,7 @@ resource "aws_s3_bucket" "swell_tags" {
 }
 
 resource "aws_iam_role" "step_function_role" {
-  name = "archive_builder_"
+  name = "archive_builder_role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -199,11 +224,7 @@ resource "aws_iam_role_policy" "step_function_policy" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["lambda:InvokeFunction"]
-      Resource = [
-        aws_lambda_function.era5_netcdf_to_geoparquet_handler.arn,
-        aws_lambda_function.validate_baseline.arn,
-        aws_lambda_function.get_new_archives_handler.arn
-      ]
+      Resource = [for func in aws_lambda_function.function : func.arn]
     }]
   })
 }
@@ -212,10 +233,7 @@ resource "aws_sfn_state_machine" "archive_builder" {
   name     = "archive_builder"
   role_arn = aws_iam_role.step_function_role.arn
 
-  # Inject the Lambda ARN dynamically into the JSON template file
   definition = templatefile("${path.module}/state_machine.json.tpl", {
-    validate_baseline_arn = aws_lambda_function.validate_baseline.arn,
-    get_new_archives_arn = aws_lambda_function.get_new_archives_handler.arn,
-    era5_netcdf_to_geoparquet_arn = aws_lambda_function.era5_netcdf_to_geoparquet_handler.arn
+    for func in aws_aws_lambda_function.function: func.function_name => func.arn
   })
 }

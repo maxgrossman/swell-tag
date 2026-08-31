@@ -1,5 +1,4 @@
-Comment: A Hello World example demonstrating various state types of the Amazon
-  States Language
+Comment: Backfills swell tag archive
 StartAt: Validate Baseline
 States:
   Validate Baseline:
@@ -8,7 +7,7 @@ States:
     OutputPath: $.Payload
     Parameters:
       Payload.$: $
-      FunctionName: ${validate_baseline_arn}
+      FunctionName: ${handler_ensure_dependencies}
     Retry:
       - ErrorEquals:
           - Lambda.ServiceException
@@ -29,12 +28,12 @@ States:
         StringEquals: missing_dependencies
         Next: Plan Baseline
         Assign:
-          lambdaArn: da_arn
+          lambdaArn: ${handler_initialize_models}
       - Variable: $.result
         StringEquals: have_dependencies
         Next: Find Missing ERA5
         Assign:
-          lambdaArn: backfill_arn
+          lambdaArn: ${era5_netcdf_to_geoparquet_handler}
     Comment: Takes output of baseline validation where we see if we need to baseline
       it, then does that.
   Plan Baseline:
@@ -43,7 +42,7 @@ States:
     OutputPath: $.Payload
     Parameters:
       Payload.$: $
-      FunctionName: ${plan_baseline_arn}
+      FunctionName: ${handler_initialize_models}
     Retry:
       - ErrorEquals:
           - Lambda.ServiceException
@@ -63,7 +62,7 @@ States:
     OutputPath: $.Payload
     Parameters:
       Payload.$: $
-      FunctionName: ${get_new_archives_arn}
+      FunctionName: ${get_new_archives_handler}
     Retry:
       - ErrorEquals:
           - Lambda.ServiceException
@@ -89,7 +88,7 @@ States:
           OutputPath: $.Payload
           Parameters:
             Payload.$: $
-            FunctionName: ${era5_netcdf_to_geoparquet_arn}
+            FunctionName: ${era5_netcdf_to_geoparquet_handler}
           Retry:
             - ErrorEquals:
                 - Lambda.ServiceException
@@ -103,16 +102,17 @@ States:
           End: true
           Comment: downloads the era 5 wind components from the open data bucket, masks
             them to the coast buffer, then writes geoparquet to s3 bucket
-    Next: Lambda Invoke
+    Next: Yearly Missing Intervals
     ItemsPath: $.era5_to_backfill
     ResultSelector:
       era5_to_backfill: $
-  Lambda Invoke:
+  Yearly Missing Intervals:
     Type: Task
     Resource: arn:aws:states:::lambda:invoke
     OutputPath: $.Payload
     Parameters:
       Payload.$: $
+      FunctionName: ${handler_build_missing_intervals}
     Retry:
       - ErrorEquals:
           - Lambda.ServiceException
@@ -123,17 +123,16 @@ States:
         MaxAttempts: 3
         BackoffRate: 2
         JitterStrategy: FULL
-    Next: Backfill
-  Backfill:
+    Next: Backfill Model
+    Comment: Looks through all archive tables, sees the 'merged interval' that is
+      missing and returns it in yearly chunks
+  Backfill Model:
     Type: Task
     Resource: arn:aws:states:::lambda:invoke
     OutputPath: $.Payload
     Parameters:
-      FunctionName: ${backill_table_arn}
-      Payload:
-        sampleKey1: sampleValue1
-        key2.$: $.myStateInput.key
-        key3: 100
+      Payload.$: $
+      FunctionName: ${handler_select_interval}
     Retry:
       - ErrorEquals:
           - Lambda.ServiceException

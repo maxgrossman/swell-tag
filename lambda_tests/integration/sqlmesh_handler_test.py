@@ -51,7 +51,7 @@ def test_interval_lambda():
 
 @pytest.mark.explicit
 def test_build_missing_intervals_handler():
-    intervals = handler_build_missing_intervals(event={}, context={})['missing_intervals']
+    intervals = handler_build_missing_intervals(event={}, context={})['ranges']
     # this gonna change but hey, just up it!
     assert len(intervals) == 27
     for interval in intervals[:-1]:

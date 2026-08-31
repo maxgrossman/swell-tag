@@ -16,3 +16,4 @@ ndbc.db*
 .pytest_cache
 .vscode
 layers/python/*
+layers/sqlmesh/*

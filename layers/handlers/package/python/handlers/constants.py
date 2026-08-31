@@ -21,3 +21,9 @@ INTERPOLATED_MODELS = [
     'swell_tags.tide_idw',
     'swell_tags.bouy_reading_idw'
 ]
+
+MERGED_MODELS = [
+    'ndbc_duck.standard_measurements'
+]
+
+BACKFILLABLE_MODELS = RAW_MODELS + INTERPOLATED_MODELS + MERGED_MODELS
