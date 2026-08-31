@@ -1,0 +1,148 @@
+Comment: A Hello World example demonstrating various state types of the Amazon
+  States Language
+StartAt: Validate Baseline
+States:
+  Validate Baseline:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    OutputPath: $.Payload
+    Parameters:
+      Payload.$: $
+      FunctionName: ${validate_baseline_arn}
+    Retry:
+      - ErrorEquals:
+          - Lambda.ServiceException
+          - Lambda.AWSLambdaException
+          - Lambda.SdkClientException
+          - Lambda.TooManyRequestsException
+        IntervalSeconds: 1
+        MaxAttempts: 3
+        BackoffRate: 2
+        JitterStrategy: FULL
+    Comment: Run lambda handler that validates 'baseline', the archive, stations,
+      and coast h3s exist.
+    Next: Choice
+  Choice:
+    Type: Choice
+    Choices:
+      - Variable: $.result
+        StringEquals: missing_dependencies
+        Next: Plan Baseline
+        Assign:
+          lambdaArn: da_arn
+      - Variable: $.result
+        StringEquals: have_dependencies
+        Next: Find Missing ERA5
+        Assign:
+          lambdaArn: backfill_arn
+    Comment: Takes output of baseline validation where we see if we need to baseline
+      it, then does that.
+  Plan Baseline:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    OutputPath: $.Payload
+    Parameters:
+      Payload.$: $
+      FunctionName: ${plan_baseline_arn}
+    Retry:
+      - ErrorEquals:
+          - Lambda.ServiceException
+          - Lambda.AWSLambdaException
+          - Lambda.SdkClientException
+          - Lambda.TooManyRequestsException
+        IntervalSeconds: 1
+        MaxAttempts: 3
+        BackoffRate: 2
+        JitterStrategy: FULL
+    Next: Find Missing ERA5
+    Comment: fills the archive tables, the bouy & station tables, the coast h3 cell
+      tables, and makes empty tables that hold all our data
+  Find Missing ERA5:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    OutputPath: $.Payload
+    Parameters:
+      Payload.$: $
+      FunctionName: ${get_new_archives_arn}
+    Retry:
+      - ErrorEquals:
+          - Lambda.ServiceException
+          - Lambda.AWSLambdaException
+          - Lambda.SdkClientException
+          - Lambda.TooManyRequestsException
+        IntervalSeconds: 1
+        MaxAttempts: 3
+        BackoffRate: 2
+        JitterStrategy: FULL
+    Next: Map
+  Map:
+    Type: Map
+    MaxConcurrency: 10
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: ERA5 to Parquet
+      States:
+        ERA5 to Parquet:
+          Type: Task
+          Resource: arn:aws:states:::lambda:invoke
+          OutputPath: $.Payload
+          Parameters:
+            Payload.$: $
+            FunctionName: ${era5_netcdf_to_geoparquet_arn}
+          Retry:
+            - ErrorEquals:
+                - Lambda.ServiceException
+                - Lambda.AWSLambdaException
+                - Lambda.SdkClientException
+                - Lambda.TooManyRequestsException
+              IntervalSeconds: 1
+              MaxAttempts: 3
+              BackoffRate: 2
+              JitterStrategy: FULL
+          End: true
+          Comment: downloads the era 5 wind components from the open data bucket, masks
+            them to the coast buffer, then writes geoparquet to s3 bucket
+    Next: Lambda Invoke
+    ItemsPath: $.era5_to_backfill
+    ResultSelector:
+      era5_to_backfill: $
+  Lambda Invoke:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    OutputPath: $.Payload
+    Parameters:
+      Payload.$: $
+    Retry:
+      - ErrorEquals:
+          - Lambda.ServiceException
+          - Lambda.AWSLambdaException
+          - Lambda.SdkClientException
+          - Lambda.TooManyRequestsException
+        IntervalSeconds: 1
+        MaxAttempts: 3
+        BackoffRate: 2
+        JitterStrategy: FULL
+    Next: Backfill
+  Backfill:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    OutputPath: $.Payload
+    Parameters:
+      FunctionName: ${backill_table_arn}
+      Payload:
+        sampleKey1: sampleValue1
+        key2.$: $.myStateInput.key
+        key3: 100
+    Retry:
+      - ErrorEquals:
+          - Lambda.ServiceException
+          - Lambda.AWSLambdaException
+          - Lambda.SdkClientException
+          - Lambda.TooManyRequestsException
+        IntervalSeconds: 1
+        MaxAttempts: 3
+        BackoffRate: 2
+        JitterStrategy: FULL
+    End: true
+QueryLanguage: JSONPath

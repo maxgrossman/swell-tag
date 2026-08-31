@@ -54,7 +54,7 @@ def execute(
             SELECT
                 strptime(archive_file[-24:-15], '%Y%m%d%H')::timestamptz at time zone 'utc' as start_timestamp_tz,
                 strptime(archive_file[-13:-4], '%Y%m%d%H')::timestamptz at time zone 'utc' as end_timestamp_tz,
-                's3://nsf-ncar-era5/e5.oper.an.sfc/' || archive_file as archive_url,
-                regexp_replace(string_split(archive_file,'/')[-1], 'nc', 'parquet') as parquet_path
+                's3://nsf-ncar-era5/' || archive_file as archive_url,
+                's3://swell-tags/bronze/era5_wind/' || regexp_replace(string_split(archive_file,'/')[-1], 'nc', 'parquet') as parquet_path
             FROM era_index
         """)

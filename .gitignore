@@ -13,3 +13,6 @@ data/swell.ducklake
 .cache
 ndbc.db*
 .tmp
+.pytest_cache
+.vscode
+layers/python/*

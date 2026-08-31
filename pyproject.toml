@@ -1,0 +1,15 @@
+[project]
+name = "swell-tag"
+version = "0.1.0"
+dependencies = [
+    "sqlmesh",
+    "boto3",
+    "duckdb",
+    "xarray",
+    "rioxarray",
+    "pandas",
+    "geopandas"
+]
+
+[project.optional-dependencies]
+test = ["pytest"]

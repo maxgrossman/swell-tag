@@ -1,13 +1,17 @@
+import os
+import tempfile
 import duckdb
+import geopandas as gpd
 import rioxarray
 import xarray as xr
+import pandas as pd
 import geopandas as gpd
-import json
-import tempfile
-import argparse
 import numpy as np
-from pathlib import Path
+
+from itertools import batched
+from shapely import wkb
 from shapely.geometry import mapping
+from pathlib import Path
 
 # https://confluence.ecmwf.int/plugins/viewsource/viewpagesrc.action?pageId=536218894
 def apply_lon_lat_conventions(ds):
@@ -32,20 +36,14 @@ def era5_10_vectors_to_table(
     era5_wind_increment_path: str,
     era5_wind_parquet: str,
     wind_vector_dim: str,
-    coast_mask_path: str,
-    cells_lookup_path: str,
+    mask_gdf: gpd.GeoDataFrame,
+    cells_lookup: pd.DataFrame,
 ):
-    with tempfile.TemporaryDirectory() as temp_zarr_dir, \
-         open(cells_lookup_path,'r') as cell_lookup, \
-         open(coast_mask_path, 'r') as cell_mask:
-
-        cells_lookup = json.loads(cell_lookup.read())['cells']
-        mask_gdf = gpd.read_file(cell_mask)
+    with tempfile.TemporaryDirectory() as temp_zarr_dir:
         temp_zarr = Path(temp_zarr_dir, 'tmp.zarr').as_posix()
-
         print('CLIPPING ERA5 TO COAST BOUNDS')
+        ds = apply_lon_lat_conventions(xr.open_dataset(era5_wind_increment_path, engine="h5netcdf"))
         # rio to make xarray mask from buffer. "clip" the era5 wind to that boundary
-        ds = apply_lon_lat_conventions(xr.open_dataset(era5_wind_increment_path))
         ds.rio.write_crs("EPSG:4326", inplace=True) 
         mask_gdf.set_crs(ds.rio.crs, inplace=True)
         # note the funky flip of the coordinates in the isel. can't say i know why that happened.
@@ -58,7 +56,6 @@ def era5_10_vectors_to_table(
             longitude=xr.DataArray(cells_lookup['lons'], dims='coastal_points'), 
             method="nearest"
         )
-
         subset.to_zarr(temp_zarr)
 
         print('MAKE GEOPARQUET')
@@ -66,6 +63,7 @@ def era5_10_vectors_to_table(
         duckdb.sql(f"""
             INSTALL zarr from community; load zarr;
             INSTALL h3 from community; load h3; 
+            # needa load the s3 secrets i bet.
             COPY (
                 WITH 
                 {wind_vector_dim} as (SELECT * FROM read_zarr('{temp_zarr}', dims=['time','coastal_points'])),
@@ -86,21 +84,42 @@ def era5_10_vectors_to_table(
             TO '{era5_wind_parquet}'
         """)
 
-def main():
-    app = argparse.ArgumentParser(prog='era5_wind_to_parquet')
-    app.add_argument('--era5_wind_netcdf', required=True)
-    app.add_argument('--era5_wind_parquet', required=True)
-    app.add_argument('--era5_wind_dim', required=True)
-    app.add_argument('--coast_mask', required=True)
-    app.add_argument('--cells_lookup', required=True)
+def get_new_archives_handler(event, context):
+    # go find the archive urls that map to a month i do not yet have in swelltags.
+    with duckdb.connect(os.getenv('SWELL_TAGS_DB')) as conn:
+        new_archives = conn.sql("""
+            with loaded_era5_months as (
+                select distinct date_trunc('month', timestamp_tz) as loaded_month 
+                from era5_duck.wind
+            ), 
+            -- 'left join' will make anything not in the wind table show loaded month 'null'
+            -- so can use that to figure out if month is loaded already.
+            loaded_archive_matched as (
+                select archive_url, parquet_path, loaded_month,
+                       case when regexp_matches(archive_url, '10u') then 'VAR_10U' else 'VAR_10V' end as era5_wind_dim
+                from era5_duck.archive
+                left join loaded_era5_months on date_trunc('month', start_timestamp_tz) = loaded_month
+            )
+            select archive_url, parquet_path, era5_wind_dim 
+            from loaded_archive_matched where loaded_month is null;
+        """).df()
 
-    args = app.parse_args()
+        backfill_zipped = zip(new_archives['archive_url'], new_archives['parquet_path'], new_archives['era5_wind_dim'])
+        backfill_batches = list(batched(backfill_zipped, 5))
+        return { 'era5_to_backfill': backfill_batches }
 
-    era5_10_vectors_to_table(era5_wind_increment_path=args.era5_wind_netcdf,
-                             era5_wind_parquet=args.era5_wind_parquet,
-                             wind_vector_dim=args.era5_wind_dim,
-                             coast_mask_path=args.coast_mask,
-                             cells_lookup_path=args.cells_lookup)
+def era5_netcdf_to_geoparquet_handler(event, context):
+    with duckdb.connect(os.getenv("SWELL_TAGS_DB")) as connection:
+        coast_mask_df = connection.sql('select h3_04, ST_AsWKB(geom) as geom from coast.buffered_h3').df();
+        coast_mask_df["geom"] = coast_mask_df["geom"].apply(bytes).apply(wkb.loads)
+        coast_mask_gdf = gpd.GeoDataFrame(coast_mask_df, geometry="geom", crs="EPSG:4326")
+        cells_lookup = connection.sql('select lats, lons from coast.cells_lookup').df()
 
-if __name__ == '__main__':
-    main()
+        for archive_url, parquet_path, era5_wind_dim in event.get('era5_to_backfill', []):
+            era5_10_vectors_to_table(
+                era5_wind_increment_path=archive_url,
+                era5_wind_parquet=parquet_path,
+                wind_vector_dim=era5_wind_dim,                      
+                mask_gdf=coast_mask_gdf,
+                cells_lookup=cells_lookup
+            )

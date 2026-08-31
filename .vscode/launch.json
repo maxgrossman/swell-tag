@@ -19,8 +19,11 @@
             "request": "launch",
             "module": "pytest",
             "console": "integratedTerminal",
-            "args": "${command:pickArgs}"
-            "justMyCode": false
+            "args": "${command:pickArgs}",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "layers/handlers/package/python/handlers"
+            }
         }
     ]
 }

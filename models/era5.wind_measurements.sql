@@ -37,10 +37,10 @@ set variable era5_10v_archive_list = (
 
 WITH 
 v_era5 as (
-    SELECT h3_cell as h3_04, longitude, latitude, VAR_10V, utc_date, utc_date::varchar as utc_str from read_parquet(['e5.oper.an.sfc.128_166_10v.ll025sc.2022030100_2022033123.parquet'], union_by_name=true)
+    SELECT h3_cell as h3_04, longitude, latitude, VAR_10V, utc_date, utc_date::varchar as utc_str from read_parquet(getvariable('era5_10v_archive_list'), union_by_name=true)
 ),
 u_era5 as (
-    SELECT h3_cell as h3_04, longitude, latitude, VAR_10U, utc_date, utc_date::varchar as utc_str from read_parquet(['e5.oper.an.sfc.128_165_10u.ll025sc.2022030100_2022033123.parquet'], union_by_name=true)
+    SELECT h3_cell as h3_04, longitude, latitude, VAR_10U, utc_date, utc_date::varchar as utc_str from read_parquet(getvariable('era5_10u_archive_list'), union_by_name=true)
 ),
 -- since h3 04 will include more than 1 era 5 reading, gotta avg the values.
 -- only thing don't love here is wind at coast != wind inland.
