@@ -51,8 +51,9 @@ def test_interval_lambda():
 
 @pytest.mark.explicit
 def test_build_missing_intervals_handler():
-    intervals = handler_build_missing_intervals(event={}, context={})
+    intervals = handler_build_missing_intervals(event={}, context={})['missing_intervals']
     # this gonna change but hey, just up it!
     assert len(intervals) == 27
     for interval in intervals[:-1]:
         assert round((interval[1]-interval[0]).total_seconds()/(60*60*24)) == year_days(interval[0].year)
+    

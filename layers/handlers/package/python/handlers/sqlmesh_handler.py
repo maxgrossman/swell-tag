@@ -100,4 +100,4 @@ def handler_build_missing_intervals(event, context):
     for interval in all_merged_isos:
         final_intervals = final_intervals + split_year(interval,[])
 
-    return final_intervals
+    return {'missing_intervals':final_intervals}
