@@ -1,12 +1,13 @@
 FROM public.ecr.aws/lambda/python:3.12 as builder
 # Copy requirements file
-COPY requirements.txt /opt
+COPY pyproject.toml /opt
+WORKDIR /opt
 
 # Install dependencies
-RUN python -m venv /opt/venv && /opt/venv/bin/pip install -r /opt/requirements.txt
+RUN pip install --no-cache-dir -e . --target /opt/install
 
 FROM public.ecr.aws/lambda/python:3.12
-COPY --from=builder /opt/venv/lib/python3.12/site-packages/ ${LAMBDA_TASK_ROOT}/
-COPY geoprocessing/era5_wind_to_parquet.py ${LAMBDA_TASK_ROOT}/
-COPY lambda_handlers/*.py ${LAMBDA_TASK_ROOT}/
-
+COPY --from=builder /opt/install ${LAMBDA_TASK_ROOT}/
+COPY ./handlers ${LAMBDA_TASK_ROOT}/
+COPY ./models ${LAMBDA_TASK_ROOT}/models
+COPY ./config.yaml ${LAMBDA_TASK_ROOT}

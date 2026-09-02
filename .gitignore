@@ -17,3 +17,4 @@ ndbc.db*
 .vscode
 layers/python/*
 layers/sqlmesh/*
+.terraform
