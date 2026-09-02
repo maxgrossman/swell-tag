@@ -20,11 +20,11 @@ gateways:
       extensions: 
         - spatial
         - httpfs
-      secrets:
-        - type: s3
-          region: {{ env_var('AWS_REGION') }}
-          key_id: {{ env_var('AWS_ACCESS_KEY_ID') }}
-          secret: {{ env_var('AWS_SECRET_ACCESS_KEY') }}
+    connection_pre_statements:
+      - "CREATE OR REPLACE SECRET my_aws_secret (TYPE s3, PROVIDER credential_chain);
+
+
+
 default_gateway: duckdb_local
 
 # --- Model Defaults ---

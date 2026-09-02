@@ -1,3 +1,4 @@
+import os
 import itertools
 import subprocess
 import constants
@@ -6,6 +7,9 @@ import sqlmesh
 from datetime import datetime, timedelta, UTC
 from sqlmesh.core.snapshot.definition import merge_intervals
 from utils import split_year
+
+SQLMESH_GATEWAY = os.getenv("SQLMESH_GATEWAY", "duckdb_s3")
+SQLMESH_PATH = os.getenv("SQLMESH_PATH", "sqlmesh")
 
 def run_shell_cmd(command, run_kwargs={'check':True}):
     print(' '.join(command))
@@ -39,23 +43,23 @@ def initialize_models(plan_command, select_models):
             except Exception:
                 pass
 
-sqlmesh_command = ['sqlmesh', '--log-to-stdout']
+sqlmesh_command = [SQLMESH_PATH, '--log-to-stdout']
 
 def handler_select_full(event, context):
     select_models = models_to_args(event.get('models'))
-    plan_command = sqlmesh_command + ['--gateway', event.get('gateway', 'duckdb_local'), 'plan']
+    plan_command = sqlmesh_command + ['--gateway', SQLMESH_GATEWAY, 'plan']
     plan_command = plan_command + select_models + ['--auto-apply']
     run_shell_cmd(plan_command)
 
 def handler_initialize_models(event, context):
     select_models = models_to_args(event.get('models'))
-    plan_command = sqlmesh_command + ['--gateway', event.get('gateway', 'duckdb_local'), 'plan']
+    plan_command = sqlmesh_command + ['--gateway', SQLMESH_GATEWAY, 'plan']
     initialize_models(plan_command, select_models)
 
 def handler_select_interval(event, context):
     select_models = models_to_args(event.get('models'))
     start_end_args = [start_end_to_args(select_range[0], select_range[1]) for select_range in event.get('ranges')]
-    plan_command = sqlmesh_command + ['--gateway', event.get('gateway', 'duckdb_local'), 'plan']
+    plan_command = sqlmesh_command + ['--gateway', SQLMESH_GATEWAY, 'plan']
     initialize_models(plan_command, select_models)
 
     # since duckdb doesn't spill for every op + only 10 gbs of storage n lambda, 
@@ -67,7 +71,7 @@ def handler_select_interval(event, context):
 
 def handler_ensure_dependencies(event, context):
     models = event.get('models')
-    table_name_command = sqlmesh_command + ['--gateway', event.get('gateway', 'duckdb_local'), 'table_name']
+    table_name_command = sqlmesh_command + ['--gateway', SQLMESH_GATEWAY, 'table_name']
 
     for model in models:
         try:

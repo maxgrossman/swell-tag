@@ -76,6 +76,14 @@ resource "aws_lambda_function" "function" {
     command = ["handlers/${each.value.handler}"] 
   }
 
+  environment {
+    variables = {
+      SQLMESH_GATEWAY = "duckdb_s3"
+      SQLMESH_PATH = "bin/sqlmesh"
+    }
+  }
+
+
   memory_size = each.value.lambda_memory
   ephemeral_storage {
     size = each.value.ephemeral_storage

@@ -11,3 +11,4 @@ COPY --from=builder /opt/install ${LAMBDA_TASK_ROOT}/
 COPY ./handlers ${LAMBDA_TASK_ROOT}/
 COPY ./models ${LAMBDA_TASK_ROOT}/models
 COPY ./config.yaml ${LAMBDA_TASK_ROOT}
+ENV PYTHONPATH="${LAMBDA_TASK_ROOT}"
