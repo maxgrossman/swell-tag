@@ -1,5 +1,6 @@
 # --- Gateway Connection ---
 disable_anonymized_analytics: true
+cache_dir: "{{ env_var('SQLMESH_CACHE_DIR', './') }}"
 gateways:
   duckdb_local:
     state_connection: 
@@ -12,18 +13,20 @@ gateways:
         - spatial
   duckdb_s3:
     state_connection: 
-      type: duckdb
-      database: data/sqlmesh_state.db
+      type: postgres
+      host: "{{ env_var('PGHOST') }}"
+      port: "{{ env_var('PORT', 5432) }}""
+      user: "{{ env_var('PGUSER')}}"
+      password: "{{ env_var('PGPASSWORD')}}"
+      database: "{{ env_var('PGDATABASE')}}"
     connection:
       type: duckdb
-      database: s3://swell-tags-data/swell_tags.db
+      database: s3://swell-tags/swell_tags.db
       extensions: 
         - spatial
         - httpfs
-    connection_pre_statements:
-      - "CREATE OR REPLACE SECRET my_aws_secret (TYPE s3, PROVIDER credential_chain);
-
-
+before_all:
+  - "@IF(@gateway = 'duckdb_s3', @load_s3_lambda_creds())"  
 
 default_gateway: duckdb_local
 

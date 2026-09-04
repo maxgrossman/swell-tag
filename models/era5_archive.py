@@ -1,13 +1,17 @@
 from sqlmesh import ExecutionContext, model
-import boto3
 import tempfile
 import logging
-import botocore
+
+import pandas as pd
+
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO,format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 def get_client():
+    import boto3
+    import botocore
     return boto3.client('s3', config=botocore.config.Config(signature_version=botocore.UNSIGNED))
 
 def get_object_keys(s3_client, bucket_name, start_year, end_year, object_filter):
@@ -43,7 +47,7 @@ def execute(
     start: datetime,
     end: datetime,
     execution_time: datetime,
-    **kwargs: t.Any,
+    **kwargs
 ) -> pd.DataFrame:
     with tempfile.NamedTemporaryFile(delete=True) as tmp_file:
         all_keys = list(get_object_keys(get_client(), 'nsf-ncar-era5', 2000, 2027, lambda obj: '_10v' in obj['Key'] or '_10u' in obj['Key']))

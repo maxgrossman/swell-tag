@@ -1,13 +1,24 @@
+import os
+
+SQLMESH_CONFIG_PATH = os.getenv("SQLMESH_CONFIG_PATH", ".")
+SQLMESH_GATEWAY = os.getenv("SQLMESH_GATEWAY", "duckdb_s3")
+SQLMESH_PATH = os.getenv("SQLMESH_PATH", "sqlmesh")
+SQLMESH_LOG_DIR = os.getenv("SQLMESH_LOG_DIR", "./logs")
+SQLMESH_DEBUG = os.getenv("SQLMESH_DEBUG", "false") == "true"
+SQLMESH_COMMAND = [SQLMESH_PATH, '--paths', SQLMESH_CONFIG_PATH,'--log-file-dir', SQLMESH_LOG_DIR, '--log-to-stdout']
+
+if SQLMESH_DEBUG: SQLMESH_COMMAND.append("--debug")
+
 BASELINE_MODELS = [
-    'coast.buffered_h3',
-    'coast.lines',
-    'coast.cells_lookup',
-    'ndbc_duck.archive',
-    'ndbc_duck.archive_realtime',
-    'ndbc_duck.bouy_history',
-    'ushlc.archive',
-    'ushlc.stations',
-    'era5_duck.archive',
+    "coast.buffered_h3",
+    "coast.lines",
+    "coast.cells_lookup",
+    "ndbc_duck.archive",
+    "ndbc_duck.archive_realtime",
+    "ndbc_duck.bouy_history",
+    "ushlc.archive",
+    "ushlc.stations",
+    "era5_duck.archive",
 ]
 
 RAW_MODELS = [

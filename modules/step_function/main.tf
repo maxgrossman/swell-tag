@@ -2,43 +2,72 @@ variable "swell_tags_step_arn" {
     type = string
 }
 
+variable "database_host" {
+    type = string
+} 
+
+variable "database_port" {
+    type = string
+} 
+
+variable "database_name" {
+    type = string
+} 
+
+variable "database_user" {
+    type = string
+} 
+
 variable "step_lambdas" {
     type = map(object({
         handler = string
+        timeout = string
         lambda_memory = number
         ephemeral_storage = number
     }))
 
     default = {
+        "handler_select_full" = {
+            handler = "handler_select_full"
+            lambda_memory = 512
+            ephemeral_storage = 512
+            timeout = 60
+        },
         "handler_ensure_dependencies" = {
-            handler = "sqlmesh_handler.handler_ensure_dependencies"
+            handler = "handler_ensure_dependencies"
             lambda_memory = 128
             ephemeral_storage = 512
+            timeout = 60
         },
         "handler_initialize_models" = {
-            handler = "sqlmesh_handler.handler_initialize_models"
+            handler = "handler_initialize_models"
             lambda_memory = 256
             ephemeral_storage = 512
+            timeout = 60
         },
-        "get_new_archives_handler" = {   
-            handler = "sqlmesh_handler.get_new_archives_handler"
+        "handler_era5_get_missing" = {   
+            handler = "handler_era5_get_missing"
             lambda_memory = 256
             ephemeral_storage = 512
+            timeout = 60
         },
-        "era5_netcdf_to_geoparquet_handler" = {
-            handler = "era5_handler.era5_netcdf_to_geoparquet_handler"
+        "handler_era5_netcdf_to_geoparquet_handler" = {
+            handler = "handler_era5_netcdf_to_geoparquet_handler"
             lambda_memory = 4112
             ephemeral_storage = 10240
+            timeout = 60
         },
         "handler_build_missing_intervals" = {
-            handler = "sqlmesh_handler.handler_build_missing_intervals"
+            handler = "handler_build_missing_intervals"
             lambda_memory = 128
             ephemeral_storage = 512
+            timeout = 60
         },
         "handler_select_interval" = {
-            handler = "sqlmesh_handler.handler_select_interval"
+            handler = "handler_select_interval"
             lambda_memory = 2056
             ephemeral_storage = 10240
+            timeout = 60
         }
     }
 }
@@ -69,20 +98,35 @@ resource "aws_lambda_function" "function" {
   role          = var.swell_tags_step_arn
 
   package_type  = "Image"
-  image_uri     = "${data.aws_ecr_repository.swell_tags.repository_url}:${data.aws_ecr_image.swell_tags_image.image_tag}"
+  # dare i think i can rely on an image tag! use the sha brah!
+  image_uri     = "${data.aws_ecr_repository.swell_tags.repository_url}@${data.aws_ecr_image.swell_tags_image.image_digest}"
 
   image_config {
     # Overrides the CMD instruction in the Dockerfile
-    command = ["handlers/${each.value.handler}"] 
+    command = ["handlers.${each.value.handler}.handler"]
+    working_directory = "/var/task"
   }
 
   environment {
     variables = {
       SQLMESH_GATEWAY = "duckdb_s3"
       SQLMESH_PATH = "bin/sqlmesh"
+      SQLMESH_LOG_DIR = "/tmp"
+      SQLMESH_CONFIG_PATH = "/var/task"
+      SQLMESH_DEBUG = "true"
+      SQLMESH_CACHE_DIR = "/tmp/cache_dir"
+      PGHOST = var.database_host
+      PGPORT = var.database_port
+      PGUSER = var.database_user
+      PGDATABASE = var.database_name
+      MAX_FORK_WORKERS = 1
+      SQLMESH__DISABLE_ANONYMIZED_ANALYTICS = "true"
+      SQLMESH_HOME = "/tmp"
+      PYTHONPATH = "/var/task"
     }
   }
 
+  timeout = each.value.timeout
 
   memory_size = each.value.lambda_memory
   ephemeral_storage {

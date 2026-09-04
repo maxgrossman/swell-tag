@@ -19,6 +19,10 @@ data "aws_iam_policy_document" "lambda_trust" {
   }
 }
 
+data "aws_iam_policy" "basic_execution_role" {
+  arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
 resource "aws_iam_role" "swell_tags_step" {
   name               = "swell-tags-step"
   assume_role_policy = data.aws_iam_policy_document.lambda_trust.json
@@ -30,6 +34,12 @@ resource "aws_iam_role" "swell_tags_step" {
     Environment = "prod"
   }
 }
+
+resource "aws_iam_role_policy_attachment" "basic_execution_role_attach" {
+  role       = aws_iam_role.swell_tags_step.name
+  policy_arn = data.aws_iam_policy.basic_execution_role.arn
+}
+
 
 output "swell_tags_step_role" { 
     value = aws_iam_role.swell_tags_step.arn

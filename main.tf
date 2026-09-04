@@ -39,10 +39,18 @@ module "s3" {
   admin_user_role_arn = module.iam.admin_user_role
 }
 
+module "aurora" {
+  source = "./modules/aurora"
+}
+
 module "step_function" {
   source = "./modules/step_function" 
   swell_tags_step_arn = module.iam.swell_tags_step_role
   swell_tags_ecr_repo = module.ecr.swell_tags_ecr_repo
+  database_user       = module.aurora.database_user
+  database_host       = module.aurora.database_host
+  database_port       = module.aurora.database_port
+  database_name       = module.aurora.database_name
 }
 
 # Configure the AWS Provider
