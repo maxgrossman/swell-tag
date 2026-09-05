@@ -13,7 +13,6 @@ resource "aws_ecr_repository" "swell_tags" {
   }
 }
 
-
 output "swell_tags_ecr_repo" {
     value = aws_ecr_repository.swell_tags.name
 }

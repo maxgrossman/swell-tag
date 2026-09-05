@@ -41,6 +41,7 @@ module "s3" {
 
 module "aurora" {
   source = "./modules/aurora"
+  swell_tags_step_name = module.iam.swell_tags_step_role_name
 }
 
 module "step_function" {

@@ -41,6 +41,10 @@ resource "aws_iam_role_policy_attachment" "basic_execution_role_attach" {
 }
 
 
+output "swell_tags_step_role_name" { 
+    value = aws_iam_role.swell_tags_step.name
+}
+
 output "swell_tags_step_role" { 
     value = aws_iam_role.swell_tags_step.arn
 }
