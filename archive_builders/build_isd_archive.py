@@ -8,8 +8,6 @@ from botocore.config import Config
 logging.basicConfig(level=logging.INFO,format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-
-
 def get_object_keys(s3_client, bucket_name, start_year, end_year):
     for year in range(start_year, end_year):
         logging.info(f'walking station files in {str(year)}')

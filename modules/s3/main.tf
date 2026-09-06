@@ -24,7 +24,10 @@ data "aws_iam_policy_document" "swell_tags_policy" {
       ]
     }
 
-    resources = [aws_s3_bucket.swell_tags.arn]
+    resources = [
+      aws_s3_bucket.swell_tags.arn,
+      "${aws_s3_bucket.swell_tags.arn}/*"
+    ]
 
     actions = [
       "s3:GetObject",
@@ -35,7 +38,7 @@ data "aws_iam_policy_document" "swell_tags_policy" {
 }
 
 resource "aws_s3_bucket" "swell_tags" {
-  bucket = "swell-tags"
+  bucket = "swell-tags" 
 
   tags = {
     Name        = "swell-tags"
@@ -43,6 +46,12 @@ resource "aws_s3_bucket" "swell_tags" {
     Environment = "prod"
   }
 }
+
+resource "aws_s3_bucket_policy" "swell_tags" {
+  bucket = aws_s3_bucket.swell_tags.id
+  policy = data.aws_iam_policy_document.swell_tags_policy.json
+}
+
 
 output "swell_tags_bucket" {
     value = aws_s3_bucket.swell_tags.arn

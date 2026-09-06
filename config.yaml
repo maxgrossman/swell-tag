@@ -15,13 +15,13 @@ gateways:
     state_connection: 
       type: postgres
       host: "{{ env_var('PGHOST') }}"
-      port: "{{ env_var('PORT', 5432) }}""
+      port: "{{ env_var('PORT', 5432) }}"
       user: "{{ env_var('PGUSER')}}"
       password: "{{ env_var('PGPASSWORD')}}"
       database: "{{ env_var('PGDATABASE')}}"
     connection:
       type: duckdb
-      database: s3://swell-tags/swell_tags.db
+      database: "s3://swell-tags/swell_tags.duckdb"
       extensions: 
         - spatial
         - httpfs

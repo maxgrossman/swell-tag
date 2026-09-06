@@ -2,7 +2,8 @@
 name = "swell-tag"
 version = "0.1.0"
 dependencies = [
-    "sqlmesh",
+    "psycopg2-binary",
+    "sqlmesh[postgres]",
     "boto3",
     "duckdb",
     "xarray",

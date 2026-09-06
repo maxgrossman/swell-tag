@@ -2,6 +2,10 @@ variable "swell_tags_step_arn" {
     type = string
 }
 
+variable "swell_tags_step_name" {
+    type = string
+}
+
 variable "database_host" {
     type = string
 } 
@@ -18,6 +22,14 @@ variable "database_user" {
     type = string
 } 
 
+variable "subnet_ids" {
+    type = list(string) 
+}
+
+variable "security_groups" {
+    type = list(string) 
+}
+
 variable "step_lambdas" {
     type = map(object({
         handler = string
@@ -27,6 +39,24 @@ variable "step_lambdas" {
     }))
 
     default = {
+        "handler_build_archives" = {
+            handler = "handler_build_archives"
+            lambda_memory = 1024
+            ephemeral_storage = 1024
+            timeout = 240
+        },
+        "handler_bronze_partitions" = {
+            handler = "handler_bronze_partitions"
+            lambda_memory = 1024
+            ephemeral_storage = 1024
+            timeout = 240
+        },
+        "handler_bronze_layer" = {
+            handler = "handler_bronze_layer"
+            lambda_memory = 4096
+            ephemeral_storage = 4096
+            timeout = 900
+        },
         "handler_select_full" = {
             handler = "handler_select_full"
             lambda_memory = 512
@@ -92,6 +122,11 @@ data "aws_ecr_image" "swell_tags_image" {
   image_tag       = var.swell_tags_image_version
 }
 
+# resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
+#   role       = var.swell_tags_step_name
+#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+# }
+
 resource "aws_lambda_function" "function" {
   for_each      = var.step_lambdas
   function_name = each.key
@@ -115,6 +150,7 @@ resource "aws_lambda_function" "function" {
       SQLMESH_CONFIG_PATH = "/var/task"
       SQLMESH_DEBUG = "true"
       SQLMESH_CACHE_DIR = "/tmp/cache_dir"
+      SWELL_TAGS_BUCKET = "s3://swell-tags"
       PGHOST = var.database_host
       PGPORT = var.database_port
       PGUSER = var.database_user
@@ -132,6 +168,13 @@ resource "aws_lambda_function" "function" {
   ephemeral_storage {
     size = each.value.ephemeral_storage
   }
+
+  # vpc_config {
+  #   subnet_ids         = var.subnet_ids
+  #   security_group_ids = var.security_groups
+  # }
+
+  # depends_on = [aws_iam_role_policy_attachment.lambda_vpc_access]
 
   tags = {
     Name = "${each.key}"

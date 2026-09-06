@@ -1,4 +1,4 @@
-from sqlmesh import ExecutionContext, model
+import duckdb
 import tempfile
 import logging
 
@@ -9,9 +9,10 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO,format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+import boto3
+import botocore
+
 def get_client():
-    import boto3
-    import botocore
     return boto3.client('s3', config=botocore.config.Config(signature_version=botocore.UNSIGNED))
 
 def get_object_keys(s3_client, bucket_name, start_year, end_year, object_filter):
@@ -32,33 +33,44 @@ def get_object_keys(s3_client, bucket_name, start_year, end_year, object_filter)
         except Exception as e:
             print(f"Error fetching bucket contents: {e}")
 
-@model(
-    "era5_duck.archive",
-    kind="FULL",
-    columns={
-        "start_timestamp_tz": "timestamptz",
-        "end_timestamp_tz": "timestamptz",
-        "archive_url": "varchar",
-        "parquet_path": "varchar"
-    }
-)
-def execute(
-    context: ExecutionContext,
-    start: datetime,
-    end: datetime,
-    execution_time: datetime,
-    **kwargs
-) -> pd.DataFrame:
+def era_5_archive_sql(tmp_file_name):
+    return f"""
+    WITH era_index as (SELECT * as archive_file from read_csv('{tmp_file_name}', header=false))
+    SELECT
+        strptime(archive_file[-24:-15], '%Y%m%d%H')::timestamptz at time zone 'utc' as start_timestamp_tz,
+        strptime(archive_file[-13:-4], '%Y%m%d%H')::timestamptz at time zone 'utc' as end_timestamp_tz,
+        's3://nsf-ncar-era5/' || archive_file as archive_url,
+        's3://swell-tags/bronze/era5' || regexp_replace(string_split(archive_file,'/')[-1], 'nc', 'parquet') as s3_url     
+    FROM era_index
+    """
+
+def write_era5_to_csv_path(
+    conn: duckdb.DuckDBPyConnection,
+    csv_path: str,
+) -> None:
     with tempfile.NamedTemporaryFile(delete=True) as tmp_file:
         all_keys = list(get_object_keys(get_client(), 'nsf-ncar-era5', 2000, 2027, lambda obj: '_10v' in obj['Key'] or '_10u' in obj['Key']))
         tmp_file.write('\n'.join(all_keys).encode('utf-8'))
         tmp_file.seek(0)
-        return context.fetchdf(f"""
-            WITH era_index as (SELECT * as archive_file from read_csv('{tmp_file.name}', header=false))
-            SELECT
-                strptime(archive_file[-24:-15], '%Y%m%d%H')::timestamptz at time zone 'utc' as start_timestamp_tz,
-                strptime(archive_file[-13:-4], '%Y%m%d%H')::timestamptz at time zone 'utc' as end_timestamp_tz,
-                's3://nsf-ncar-era5/' || archive_file as archive_url,
-                's3://swell-tags/bronze/era5_wind/' || regexp_replace(string_split(archive_file,'/')[-1], 'nc', 'parquet') as parquet_path
-            FROM era_index
+        conn.execute(f""" 
+            COPY (
+                {era_5_archive_sql(tmp_file_name=tmp_file.name)}
+            ) TO '{csv_path}'
+        """)
+
+
+def write_era5_to_s3(
+    conn: duckdb.DuckDBPyConnection,
+    s3_uri: str,
+) -> None:
+    with tempfile.NamedTemporaryFile(delete=True) as tmp_file:
+        all_keys = list(get_object_keys(get_client(), 'nsf-ncar-era5', 2000, 2027, lambda obj: '_10v' in obj['Key'] or '_10u' in obj['Key']))
+        tmp_file.write('\n'.join(all_keys).encode('utf-8'))
+        tmp_file.seek(0)
+        conn.execute(f""" 
+            INSTALL httpfs;
+            LOAD httpfs;
+            COPY (
+                {era_5_archive_sql(tmp_file_name=tmp_file.name)}
+            ) TO '{s3_uri}'
         """)

@@ -2,8 +2,21 @@ variable "swell_tags_step_name" {
     type = string
 }
 
+variable "security_groups" {
+    type = list(string) 
+}
+
+variable "subnet_ids" {
+    type = list(string) 
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
+
+resource "aws_db_subnet_group" "swell_tags" {
+    name = "swell_tags" 
+    subnet_ids = var.subnet_ids 
+}
 
 resource "aws_rds_cluster" "swell_tags" {
   cluster_identifier = "swell-tags"
@@ -21,6 +34,9 @@ resource "aws_rds_cluster" "swell_tags" {
     min_capacity             = 0.0
     seconds_until_auto_pause = 300 # only need 5 minutes.
   }
+
+#   vpc_security_group_ids = var.security_groups
+#   db_subnet_group_name = aws_db_subnet_group.swell_tags.name
 
   tags = {
     Name        = "swell-tags"
