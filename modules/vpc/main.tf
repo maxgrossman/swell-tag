@@ -1,6 +1,16 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      # Specify a version constraint that matches your root configuration
+      version = "~> 6.0"
+    }
+  }
+}
+
 data "aws_region" "current" {}
 data "aws_vpc" "default_vpc" { tags = { environment = "default_vpc" }}
-data "aws_availability_zones" "current" { 
+data "aws_availability_zones" "current" {
     state = "available"
     region = data.aws_region.current.region
 }
@@ -25,7 +35,7 @@ resource "aws_subnet" "lambda_subnet" {
 
 resource "aws_security_group" "lambda_security_group" {
     name        = "step-function-lambda-security-group"
-    description = "security group lambda functions that need to write to sqlmesh postgres live"  
+    description = "security group lambda functions that need to write to sqlmesh postgres live"
 
     egress {
         from_port   = 0
@@ -56,11 +66,11 @@ resource "aws_security_group" "aurora_security_group" {
 }
 
 output "aurora_security_group" {
-    value = aws_security_group.aurora_security_group.id 
+    value = aws_security_group.aurora_security_group.id
 }
 
 output "lambda_security_group" {
-    value = aws_security_group.lambda_security_group.id 
+    value = aws_security_group.lambda_security_group.id
 }
 
 output "lambda_subnet" {

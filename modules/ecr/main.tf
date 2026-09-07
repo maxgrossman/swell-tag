@@ -1,3 +1,13 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      # Specify a version constraint that matches your root configuration
+      version = "~> 6.0"
+    }
+  }
+}
+
 resource "aws_ecr_repository" "swell_tags" {
   name                 = "swell-tags"
   image_tag_mutability = "IMMUTABLE" # Prevents tags from being overwritten

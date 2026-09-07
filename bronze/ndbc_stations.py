@@ -29,29 +29,14 @@ table_lines as
                 0.0::double,
                 'UTC'
             ) as timestamp_tz, 
+            date_trunc('year', timestamp_tz) as year,
             line,
             filename
         FROM parsed_lines)
-SELECT filename, station_id, timestamp_tz, line
+SELECT filename, station_id, year, timestamp_tz, line
 FROM table_lines
 ORDER BY station_id, timestamp_tz
-) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (station_id), APPEND true)
-"""
-
-PARTITION_QUERY = """
-with 
-current_parquets as (
-    SELECT distinct filename as current_s3_url 
-    FROM read_parquet($raw_archive)
-),
-partitioned as (
-    select archive_url, ntile($num_tiles) over (order by station_id) as part 
-    from read_csv($ndbc_archive)
-    -- make this guy idempotent
-    left join current_parquets on current_s3_url = s3_url
-    where current_s3_url is NULL
-)
-select array_agg(archive_url) as partition_urls from partitioned group by part;
+) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (year, station_id), APPEND true)
 """
 
 def build_bronze_layer(conn, s3_bucket, partition):
@@ -65,5 +50,5 @@ def build_bronze_layer(conn, s3_bucket, partition):
     })
 
 def build_bronze_partitions(conn, s3_bucket, num_tiles) -> pd.DataFrame:
-    query, args = build_parititon_query(s3_bucket,num_tiles,'ndbc', 'station_id')
+    query, args = build_parititon_query(s3_bucket,num_tiles,'ndbc')
     return conn.execute(query, args).df()

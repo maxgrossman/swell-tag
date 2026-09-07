@@ -1,21 +1,30 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+
 variable "swell_tags_step_name" {
     type = string
 }
 
 variable "security_groups" {
-    type = list(string) 
+    type = list(string)
 }
 
 variable "subnet_ids" {
-    type = list(string) 
+    type = list(string)
 }
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 resource "aws_db_subnet_group" "swell_tags" {
-    name = "swell_tags" 
-    subnet_ids = var.subnet_ids 
+    name = "swell_tags"
+    subnet_ids = var.subnet_ids
 }
 
 resource "aws_rds_cluster" "swell_tags" {
@@ -73,7 +82,7 @@ data "aws_iam_policy_document" "swell_tags_database_auth" {
 
 resource "aws_iam_policy" "swell_tags_database_auth" {
     name   = "swell_tags_database_auth"
-    policy = data.aws_iam_policy_document.swell_tags_database_auth.json 
+    policy = data.aws_iam_policy_document.swell_tags_database_auth.json
     tags = {
         Name        = "swell-tags"
         ManagedBy   = "tofu"

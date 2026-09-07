@@ -1,3 +1,15 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+variable "bucket_suffix" {
+    type = string
+}
+
 variable "swell_tags_step_arn" {
     type = string
 }
@@ -8,7 +20,6 @@ variable "power_user_role_arn" {
 variable "admin_user_role_arn" {
     type = string
 }
-
 
 data "aws_iam_policy_document" "swell_tags_policy" {
   statement {
@@ -38,7 +49,7 @@ data "aws_iam_policy_document" "swell_tags_policy" {
 }
 
 resource "aws_s3_bucket" "swell_tags" {
-  bucket = "swell-tags" 
+  bucket = "swell-tags-${var.bucket_suffix}"
 
   tags = {
     Name        = "swell-tags"

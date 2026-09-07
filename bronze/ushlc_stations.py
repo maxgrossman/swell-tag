@@ -14,10 +14,11 @@ COPY (
         filename,
         filename[-8:-6] as uh_id, 
         filename[-5] as version,
+        uh_id || version as station_id
         make_timestamptz(column0::bigint,column1::bigint,column2::bigint,column3::bigint,0::bigint,0.0,'utc') as timestamp_tz, 
         column4 as reading_mm 
     from read_csv($archive_urls)
-) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (uh_id), APPEND true)
+) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (station_id), APPEND true)
 """
 
 
@@ -32,5 +33,5 @@ def build_bronze_layer(conn, s3_bucket, partition):
     })
 
 def build_bronze_partitions(conn, s3_bucket, num_tiles) -> pd.DataFrame:
-    query, args = build_parititon_query(s3_bucket,num_tiles,'ushlc', 'uh_id')
+    query, args = build_parititon_query(s3_bucket,num_tiles,'ushlc')
     return conn.execute(query, args).df()
