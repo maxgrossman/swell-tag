@@ -11,7 +11,9 @@ dependencies = [
     "s3fs",
     "h5netcdf",
     "xarray",
+    "cubed-xarray",
     "rioxarray",
+    "h5py",
     "pandas",
     "geopandas"
 ]

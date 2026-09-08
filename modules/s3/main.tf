@@ -67,3 +67,7 @@ resource "aws_s3_bucket_policy" "swell_tags" {
 output "swell_tags_bucket" {
     value = aws_s3_bucket.swell_tags.arn
 }
+
+output "swell_tags_bucket_uri" {
+    value = "s3://${aws_s3_bucket.swell_tags.bucket}"
+}

@@ -87,6 +87,30 @@ resource "aws_iam_role" "step_function_role" {
   })
 }
 
+resource "aws_iam_role" "bronze_layer_ecs_executor" {
+  name = "bronze-layer-ecs-executor"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "://amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "bronze_layer_ecs_executor" {
+  role       = aws_iam_role.bronze_layer_ecs_executor.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+
+
+output "step_function_role_name" {
+    value = aws_iam_role.step_function_role.name
+}
+
 output "step_function_role_arn" {
     value = aws_iam_role.step_function_role.arn
 }
@@ -109,4 +133,8 @@ output "power_user_role" {
 
 output "admin_user_role" {
     value = data.aws_iam_role.admin_user.arn
+}
+
+output "step_function_ecs_arn" {
+    value = aws_iam_role.bronze_layer_ecs_executor.arn
 }

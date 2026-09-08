@@ -65,30 +65,16 @@
                             "ProcessorConfig": {
                                 "Mode": "INLINE"
                             },
-                            "StartAt": "Download Bronze Partitions",
+                            "StartAt": "ECS Download Bronze Partitions",
                             "States": {
-                                "Download Bronze Partitions": {
+                                "ECS Download Bronze Partitions": {
                                     "Type": "Task",
-                                    "Resource": "arn:aws:states:::lambda:invoke",
-                                    "OutputPath": "$.Payload",
+                                    "Resource": "arn:aws:states:::ecs:runTask",
                                     "Parameters": {
-                                        "Payload.$": "$",
-                                        "FunctionName": "${handler_bronze_layer}"
+                                        "LaunchType": "FARGATE",
+                                        "Cluster": "${ecs_cluster}",
+                                        "TaskDefinition": "${handler_bronze_layer}"
                                     },
-                                    "Retry": [
-                                        {
-                                            "ErrorEquals": [
-                                                "Lambda.ServiceException",
-                                                "Lambda.AWSLambdaException",
-                                                "Lambda.SdkClientException",
-                                                "Lambda.TooManyRequestsException"
-                                            ],
-                                            "IntervalSeconds": 1,
-                                            "MaxAttempts": 3,
-                                            "BackoffRate": 2,
-                                            "JitterStrategy": "FULL"
-                                        }
-                                    ],
                                     "End": true
                                 }
                             }

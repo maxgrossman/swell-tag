@@ -12,11 +12,11 @@ BRONZE_SQL_DOWNLOAD = f"""
 COPY (
     select
         filename,
-        filename[-8:-6] as uh_id, 
+        filename[-8:-6] as uh_id,
         filename[-5] as version,
-        uh_id || version as station_id
-        make_timestamptz(column0::bigint,column1::bigint,column2::bigint,column3::bigint,0::bigint,0.0,'utc') as timestamp_tz, 
-        column4 as reading_mm 
+        uh_id || version as station_id,
+        make_timestamptz(column0::bigint,column1::bigint,column2::bigint,column3::bigint,0::bigint,0.0,'utc') as timestamp_tz,
+        column4 as reading_mm
     from read_csv($archive_urls)
 ) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (station_id), APPEND true)
 """

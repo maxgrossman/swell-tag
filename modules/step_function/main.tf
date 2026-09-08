@@ -8,6 +8,14 @@ terraform {
   }
 }
 
+variable "bronze_layer_ecs_cluster_arn" {
+  type = string
+}
+
+variable "function_suffix" {
+  type = string
+}
+
 variable "step_function_role_arn" {
   type = string
 }
@@ -16,7 +24,11 @@ variable "step_function_role_id" {
   type = string
 }
 
-variable "step_function_name" {
+variable "state_machine_name" {
+  type = string
+}
+
+variable "step_function_asl" {
   type = string
 }
 
@@ -42,6 +54,13 @@ variable "step_lambdas" {
       timeout = string
       lambda_memory = number
       ephemeral_storage = number
+    }))
+}
+
+variable "ecs_tasks" {
+    type = map(object({
+      name = string
+      arn  = string
     }))
 }
 
@@ -76,8 +95,10 @@ data "aws_ecr_image" "swell_tags_image" {
 
 resource "aws_lambda_function" "function" {
   for_each      = var.step_lambdas
-  function_name = each.key
+  function_name = "${each.key}_${var.function_suffix}"
   role          = var.swell_tags_step_arn
+
+
   package_type  = "Image"
   # dare i think i can rely on an image tag! use the sha brah!
   image_uri     = "${data.aws_ecr_repository.swell_tags.repository_url}@${data.aws_ecr_image.swell_tags_image.image_digest}"
@@ -114,24 +135,27 @@ resource "aws_lambda_function" "function" {
   }
 }
 
-resource "aws_iam_role_policy" "step_function_policy" {
-  name = "step_function_lambda_policy"
-  role = var.step_function_role_id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["lambda:InvokeFunction"]
-      Resource = [for func in aws_lambda_function.function : func.arn]
-    }]
+# i think if i was to factor out the lambda stuff into its own module,
+# i could just pass whatever the heck i want in a a 'template this' map.
+# and then I could get rid of this mashugg.
+locals {
+  lambda_func_vars = tomap({
+     for func in aws_lambda_function.function:
+      replace(func.function_name, "_${var.function_suffix}", "")  => func.arn
   })
+  ecs_task_vars = length(var.ecs_tasks) == 0 ? {} : merge(
+    { for key, task in var.ecs_tasks: task.name => task.arn },
+    { "ecs_cluster": var.bronze_layer_ecs_cluster_arn }
+  )
+  template_vars = merge(local.ecs_task_vars, local.lambda_func_vars)
 }
 
-resource "aws_sfn_state_machine" "archive_builder" {
-  name     = "archive_builder"
+resource "aws_sfn_state_machine" "state_machine" {
+  name     = var.state_machine_name
   role_arn = var.step_function_role_arn
+  definition = templatefile("${path.module}/../../step_functions/${var.step_function_asl}", local.template_vars)
+}
 
-  definition = templatefile("${path.module}/../../step_functions/${var.step_function_name}", {
-    for func in aws_lambda_function.function: func.function_name => func.arn
-  })
+output "function_arns" {
+  value = [for func in aws_lambda_function.function : func.arn]
 }
