@@ -1,3 +1,4 @@
+import json
 import os
 import boto3
 from bronze.constants import EVENT_TO_BRONZE_MAP
@@ -18,8 +19,11 @@ def handler(event, context):
         raise KeyError('You gave me an archive I do not know about.')
 
     # Retrieve the object
+    print("DOWNLOADING PARTITIONS FILE")
     response = s3_client.get_object(Bucket=partitions_manifest['Bucket'], Key=partitions_manifest['Key'])
     partitions = response['Body'].read().decode('utf-8').split('\n')
+
+    print(f"HAVE {len(partitions)} TO ARCHIVE!")
 
     with duckdb.connect() as conn:
         conn = duckdb.connect()
@@ -27,3 +31,9 @@ def handler(event, context):
         bronze_function(conn, S3_BUCKET, partitions)
         return {'archive': event.get('archive')}
 
+def handler_ecs():
+    # live dangerously, but mostly make sure we explode an error when we get one
+    print("STARING ECS HANDLER")
+    step_state = json.loads(os.getenv("STATE_DATA", "{}"))
+    print("USING STATE -> " + json.dumps(step_state))
+    return handler(step_state, {})

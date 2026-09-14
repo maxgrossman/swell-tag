@@ -6,7 +6,12 @@ terraform {
     }
   }
 }
+
 variable "bucket_suffix" {
+    type = string
+}
+
+variable "step_function_role_arn" {
     type = string
 }
 
@@ -29,6 +34,7 @@ data "aws_iam_policy_document" "swell_tags_policy" {
     principals {
       type        = "AWS"
       identifiers = [
+        var.step_function_role_arn,
         var.power_user_role_arn,
         var.admin_user_role_arn,
         var.swell_tags_step_arn

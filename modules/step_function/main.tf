@@ -48,6 +48,15 @@ variable "security_groups" {
     type = list(string)
 }
 
+variable "ecs_subnets" {
+  type = list(string)
+}
+
+variable "ecs_security_group_id" {
+  type = string
+  default = ""
+}
+
 variable "step_lambdas" {
     type = map(object({
       handler = string
@@ -58,10 +67,12 @@ variable "step_lambdas" {
 }
 
 variable "ecs_tasks" {
-    type = map(object({
-      name = string
-      arn  = string
-    }))
+  type = map(object({
+    name               = string
+    arn                = string
+    revision           = string
+    container_template = string
+  }))
 }
 
 variable "step_lambda_env_vars" {
@@ -145,6 +156,10 @@ locals {
   })
   ecs_task_vars = length(var.ecs_tasks) == 0 ? {} : merge(
     { for key, task in var.ecs_tasks: task.name => task.arn },
+    { for key, task in var.ecs_tasks: "${task.name}_revision" => task.revision },
+    { for key, task in var.ecs_tasks: task.container_template => task.name},
+    { for i, subnet in var.ecs_subnets: "ecs_private_subnet_${tostring(i)}" => subnet},
+    { "ecs_task_security_group": var.ecs_security_group_id },
     { "ecs_cluster": var.bronze_layer_ecs_cluster_arn }
   )
   template_vars = merge(local.ecs_task_vars, local.lambda_func_vars)
@@ -153,7 +168,7 @@ locals {
 resource "aws_sfn_state_machine" "state_machine" {
   name     = var.state_machine_name
   role_arn = var.step_function_role_arn
-  definition = templatefile("${path.module}/../../step_functions/${var.step_function_asl}", local.template_vars)
+  definition = templatefile("${path.module}/../../step_functions/${var.step_function_asl}",local.template_vars)
 }
 
 output "function_arns" {

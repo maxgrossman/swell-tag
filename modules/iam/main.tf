@@ -37,7 +37,7 @@ data "aws_s3_bucket" "era5_open_registry_bucket" {
 data "aws_iam_policy_document" "allow_read_era5_document" {
   statement {
     effect    = "Allow"
-    actions   = ["s3:GetObject"]
+    actions   = ["s3:GetObject", "s3:HeadObject"]
     resources = ["${data.aws_s3_bucket.era5_open_registry_bucket.arn}/*"]
   }
 }
@@ -82,10 +82,22 @@ resource "aws_iam_role" "step_function_role" {
     Statement = [{
       Action    = "sts:AssumeRole"
       Effect    = "Allow"
-      Principal = { Service = "states.amazonaws.com" }
+      Principal = {
+        Service = [
+          "states.amazonaws.com",
+          "ecs-tasks.amazonaws.com"
+        ]
+      }
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount": "${data.aws_caller_identity.current.account_id}"
+        }
+      }
     }]
   })
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "bronze_layer_ecs_executor" {
   name = "bronze-layer-ecs-executor"
@@ -95,7 +107,12 @@ resource "aws_iam_role" "bronze_layer_ecs_executor" {
     Statement = [{
       Action    = "sts:AssumeRole"
       Effect    = "Allow"
-      Principal = { Service = "://amazonaws.com" }
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount": "${data.aws_caller_identity.current.account_id}"
+        }
+      }
     }]
   })
 }

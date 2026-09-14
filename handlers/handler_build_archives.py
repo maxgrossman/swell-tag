@@ -22,6 +22,6 @@ def handler(event, context):
         for archive_func, func_output in archive_funcs:
             archive_func(connection, f'{S3_BUCKET}/bronze/{func_output}')
 
-        return [{'archive': archive} for archive in archives]
+        return [{'archive': archive, 'num_tiles': event.get('num_tiles', 40)} for archive in archives]
 
 

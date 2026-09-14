@@ -65,6 +65,18 @@ resource "aws_security_group" "aurora_security_group" {
     }
 }
 
+
+# TODO ^ SCREW THE ABOVE. JUST TEAR IT DOWN AND PUT IT IN THE VPC WE GONNA MAKE FOR FARGATE BELOW.
+
+
+# I WANT A PRIVATE SUBNET
+# AN S3 VCP ENDPOINT GATEWAY
+# ABILITY TO MAKE REQUESTS TO THATA S3 ENDPOINT FROM MY SUBNET
+
+# resource "aws_vpc" "swell_tags_vpc" {
+#     name =
+# }
+
 output "aurora_security_group" {
     value = aws_security_group.aurora_security_group.id
 }

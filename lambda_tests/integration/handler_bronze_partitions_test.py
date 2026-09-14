@@ -4,18 +4,16 @@ import os
 import boto3
 
 from archive_builders.common import setup
-from bronze.era5_cells import build_bronze_layer
+from bronze.era5_cells import build_bronze_partitions
 
 s3_client = boto3.client('s3')
 
-def test_era5_cells_bronze():
+def test_era5_cells_partitions():
     s3_bucket = 's3://swell-tags-us-west-2'
-    key = 'bronze/partitions/era5/2026-09-13T00-00-00.part.3.txt'
     os.environ['DUCKDB_EXTENSIONS_DIRECTORY'] = '~/.duckdb/extensions'
-    response = s3_client.get_object(Bucket=s3_bucket.replace('s3://',''), Key=key)
-    partitions = response['Body'].read().decode('utf-8').split('\n')[:1]
     with duckdb.connect() as conn:
         conn.install_extension('httpfs')
         conn.install_extension('aws')
         setup(conn)
-        build_bronze_layer(conn,s3_bucket,partitions)
+        res = build_bronze_partitions(conn, s3_bucket, 80)
+        print(res)

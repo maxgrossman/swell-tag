@@ -60,7 +60,7 @@
                     },
                     "Warehouse Bronze Partitions": {
                         "Type": "Map",
-                        "MaxConcurrency": 4,
+                        "MaxConcurrency": 8,
                         "ItemProcessor": {
                             "ProcessorConfig": {
                                 "Mode": "INLINE"
@@ -69,12 +69,52 @@
                             "States": {
                                 "ECS Download Bronze Partitions": {
                                     "Type": "Task",
-                                    "Resource": "arn:aws:states:::ecs:runTask",
+                                    "Resource": "arn:aws:states:::ecs:runTask.sync",
+                                    "Catch": [
+                                        {
+                                            "ErrorEquals": ["States.ALL"],
+                                            "Next": "IgnoreErrorPassState"
+                                        }
+                                    ],
                                     "Parameters": {
                                         "LaunchType": "FARGATE",
                                         "Cluster": "${ecs_cluster}",
-                                        "TaskDefinition": "${handler_bronze_layer}"
+                                        "TaskDefinition": "${handler_bronze_layer_worker}:${handler_bronze_layer_worker_revision}",
+                                        "Overrides": {
+                                            "ContainerOverrides": [
+                                                {
+                                                    "Name": "${container_name}",
+                                                    "Environment": [
+                                                        {
+                                                            "Name": "STATE_DATA",
+                                                            "Value.$": "States.JsonToString($)"
+                                                        },
+                                                        {
+                                                            "Name": "SWELL_TAGS_BUCKET",
+                                                            "Value.$": "States.Format('s3://{}',$.partition_manifest.Bucket)"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "NetworkConfiguration": {
+                                            "AwsvpcConfiguration": {
+                                                "Subnets": [
+                                                    "${ecs_private_subnet_0}",
+                                                    "${ecs_private_subnet_1}"
+                                                ],
+                                                "SecurityGroups": [
+                                                    "${ecs_task_security_group}"
+                                                ],
+                                                "AssignPublicIp": "DISABLED"
+                                            }
+                                        }
                                     },
+                                    "End": true
+                                },
+                                 "IgnoreErrorPassState": {
+                                    "Type": "Pass",
+                                    "Result": { "status": "SKIPPED_Due_To_Error" },
                                     "End": true
                                 }
                             }

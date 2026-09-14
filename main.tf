@@ -50,6 +50,7 @@ module "vpc" {
 module "s3_us_east_1" {
   source = "./modules/s3"
   bucket_suffix = "us-east-1"
+  step_function_role_arn   = module.iam.step_function_role_arn
   swell_tags_step_arn = module.iam.swell_tags_step_role
   power_user_role_arn = module.iam.power_user_role
   admin_user_role_arn = module.iam.admin_user_role
@@ -59,6 +60,7 @@ module "s3_us_east_1" {
 module "s3_us_west_2" {
   source = "./modules/s3"
   bucket_suffix = "us-west-2"
+  step_function_role_arn   = module.iam.step_function_role_arn
   swell_tags_step_arn = module.iam.swell_tags_step_role
   power_user_role_arn = module.iam.power_user_role
   admin_user_role_arn = module.iam.admin_user_role
@@ -73,6 +75,43 @@ module "aurora" {
   providers = { aws = aws.us_east_1 }
 }
 
+module "swell_tags_vpc_us_west_2" {
+  source = "./modules/swell_tags_vpc"
+  providers = { aws = aws.us_west_2 }
+}
+
+
+data "aws_availability_zones" "us_west_2" {
+  state = "available"
+  region = "us-west-2"
+}
+
+locals {
+  us_west_2_availability_zones = toset(data.aws_availability_zones.us_west_2.names)
+}
+
+module "swell_tags_vpc_subnets_us_west_2" {
+  source = "./modules/swell_tags_vpc_subnets"
+  for_each = local.us_west_2_availability_zones
+  swell_tags_vpc_id             = module.swell_tags_vpc_us_west_2.vcp_id
+  swell_tags_availability_zone  = each.value
+  swell_tags_vpc_cidr_block     = module.swell_tags_vpc_us_west_2.vpc_cidr_block
+  swell_tags_private_cidr_block = cidrsubnet(
+    module.swell_tags_vpc_us_west_2.vpc_cidr_block, 8,
+    index(tolist(local.us_west_2_availability_zones), each.value)
+  )
+  swell_tags_vpc_s3_gateway_id  = module.swell_tags_vpc_us_west_2.vpc_s3_gateway_id
+  providers = { aws = aws.us_west_2 }
+}
+
+module "swell_tags_vpc_interface_endpoinds_us_west_2" {
+  source                      = "./modules/swell_tags_vpc_interface_endpoints"
+  vpc_id                      = module.swell_tags_vpc_us_west_2.vcp_id
+  ecs_tasks_security_group_id = module.swell_tags_vpc_us_west_2.ecs_security_group_id
+  private_subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.subnet_id]
+  providers                   = { aws = aws.us_west_2 }
+}
+
 module "ecs_bronze_layer_us_west_2" {
   source = "./modules/ecs"
   providers = { aws = aws.us_west_2 }
@@ -80,12 +119,12 @@ module "ecs_bronze_layer_us_west_2" {
   step_function_role_arn = module.iam.step_function_role_arn
   step_function_role_name = module.iam.step_function_role_name
   swell_tags_ecr_repo = module.ecr_us_west_2.swell_tags_ecr_repo
-  aws_region = "us_west_2"
   tasks = {
     "handler_bronze_layer" = {
-      cpu            = "4"
-      memory         = "8182"
-      python_snippet = "import handler.handler_bronze_layer; handler.handler_bronze_layer.handler({'archive':'era5'},{})"
+      name             = "handler_bronze_layer_worker"
+      cpu              = 4096
+      memory           = 16384
+      python_snippet   = "import handlers.handler_bronze_layer; handlers.handler_bronze_layer.handler_ecs()"
     }
   }
 }
@@ -128,7 +167,8 @@ module "bronze_archive_us_east_1" {
       PYTHONPATH = "/var/task"
   }
   bronze_layer_ecs_cluster_arn = module.ecs_bronze_layer_us_west_2.bronze_layer_ecs_cluster_arn
-  ecs_tasks = {}
+  ecs_tasks          = {}
+  ecs_subnets        = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.subnet_id]
 }
 
 module "bronze_archive_us_west_2" {
@@ -169,7 +209,9 @@ module "bronze_archive_us_west_2" {
       PYTHONPATH = "/var/task"
   }
   bronze_layer_ecs_cluster_arn = module.ecs_bronze_layer_us_west_2.bronze_layer_ecs_cluster_arn
-  ecs_tasks = module.ecs_bronze_layer_us_west_2.ecs_tasks
+  ecs_tasks                    = module.ecs_bronze_layer_us_west_2.ecs_tasks
+  ecs_subnets                  = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.subnet_id]
+  ecs_security_group_id        = module.swell_tags_vpc_us_west_2.ecs_security_group_id
 }
 
 locals {
@@ -184,11 +226,18 @@ resource "aws_iam_role_policy" "step_function_policy" {
   role = module.iam.step_function_role_id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["lambda:InvokeFunction"]
-      Resource = local.step_function_arns
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = local.step_function_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:RunTask"]
+        Resource = [for key, task in module.ecs_bronze_layer_us_west_2.ecs_tasks : "${task.arn}:${task.revision}"]
+      }
+    ]
   })
 }
 
@@ -294,3 +343,7 @@ resource "aws_iam_role_policy" "step_function_policy" {
 #     ephemeral_storage = 10240
 #     timeout = 60
 # }
+
+output "ecs_tasks_us_west_2" {
+  value = module.ecs_bronze_layer_us_west_2.ecs_tasks
+}

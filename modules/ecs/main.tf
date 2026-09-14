@@ -7,6 +7,8 @@ terraform {
   }
 }
 
+data "aws_region" "current" {}
+
 variable "step_function_ecs_arn" {
     type = string
 }
@@ -19,18 +21,15 @@ variable "step_function_role_name" {
   type = string
 }
 
-variable "aws_region" {
-  type = string
-}
-
 variable "swell_tags_ecr_repo" {
   type = string
 }
 
 variable "tasks" {
     type = map(object({
-        cpu            = string
-        memory         = string
+        name           = string
+        cpu            = number
+        memory         = number
         python_snippet = string
     }))
 }
@@ -57,7 +56,7 @@ resource "aws_ecs_cluster" "bronze_layer" {
 
 resource "aws_ecs_task_definition" "bronze_layer_task" {
     for_each                 = var.tasks
-    family                   = each.key
+    family                   = each.value.name
     network_mode             = "awsvpc"
     requires_compatibilities = ["FARGATE"]
     cpu                      = each.value.cpu
@@ -65,15 +64,16 @@ resource "aws_ecs_task_definition" "bronze_layer_task" {
     execution_role_arn       = var.step_function_ecs_arn
     task_role_arn            = var.step_function_role_arn
     container_definitions    = jsonencode([{
-        name      = "${each.key}_worker",
+        name      = each.value.name,
         image     = "${data.aws_ecr_repository.swell_tags.repository_url}@${data.aws_ecr_image.swell_tags_image.image_digest}"
         essential = true
-        command   = ["python", "-c", each.value.python_snippet]
+        entryPoint = ["python", "-u"]
+        command   = ["-c", "${each.value.python_snippet}"]
         logConfiguration = {
             logDriver = "awslogs"
             options = {
                 "awslogs-group"         = "/ecs/${each.key}"
-                "awslogs-region"        = var.aws_region,
+                "awslogs-region"        = data.aws_region.current.region,
                 "awslogs-stream-prefix" = "ecs",
             }
         }
@@ -81,9 +81,14 @@ resource "aws_ecs_task_definition" "bronze_layer_task" {
 }
 
 
+locals {
+  task_definitions = flatten([
+    for key, task in aws_ecs_task_definition.bronze_layer_task: [task.arn, "${task.arn}:*"]
+  ])
+}
+
 resource "aws_iam_policy" "step_function_role_ecs_policy" {
   name = "step-functions-ecs-policy"
-
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -94,9 +99,7 @@ resource "aws_iam_policy" "step_function_role_ecs_policy" {
           "ecs:StopTask",
           "ecs:DescribeTasks"
         ]
-        Resource = [
-            for key, task in aws_ecs_task_definition.bronze_layer_task: [task.arn, "${task.arn}:*"]
-        ]
+        Resource =  local.task_definitions
       },
       {
         Effect   = "Allow"
@@ -115,7 +118,7 @@ resource "aws_iam_policy" "step_function_role_ecs_policy" {
           "events:PutRule",
           "events:DescribeRule"
         ]
-        Resource = "arn:aws:events:*:*:rule/StepFunctionsGetEventsForECSTaskRule"
+        Resource = ["arn:aws:events:*:*:rule/StepFunctionsGetEventsForECSTaskRule"]
       }
     ]
   })
@@ -140,8 +143,10 @@ output "bronze_layer_ecs_cluster_arn" {
 output "ecs_tasks" {
     value = {
         for key, task in aws_ecs_task_definition.bronze_layer_task : key => {
-            name = task.family
-            arn  = task.arn
+            name               = task.family
+            arn                = task.arn_without_revision
+            revision           = task.revision
+            container_template = "container_name"
         }
     }
 }
