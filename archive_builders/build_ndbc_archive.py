@@ -1,10 +1,10 @@
 import duckdb
 
 STANDARD_MET_QUERY = """
-WITH 
-standard_met_archive AS 
-    (SELECT name[:5] as station_id, 
-        'https://www.ndbc.noaa.gov/data/historical/stdmet/' || name as archive_url, 
+WITH
+standard_met_archive AS
+    (SELECT name[:5] as station_id,
+        'https://www.ndbc.noaa.gov/data/historical/stdmet/' || name as archive_url,
         name[7:10] as year
      FROM read_html('https://www.ndbc.noaa.gov/data/historical/stdmet/', 'table', 1)
      WHERE name not like '%Dir%'),
@@ -17,8 +17,8 @@ standard_met_this_year AS
         OFFSET 1),
 
 standard_met_full_archive AS
-    (SELECT * FROM standard_met_archive 
-        UNION ALL 
+    (SELECT * FROM standard_met_archive
+        UNION ALL
      SELECT * FROM standard_met_this_year),
 
 stations_metadata AS
@@ -33,8 +33,8 @@ SELECT
         0::bigint,
         0.0::double,
         'utc'::varchar
-    ) as timestamp_tz,      
-    station_id, 
+    ) as timestamp_tz,
+    station_id,
     archive_url,
     's3://swell-tags/bronze/ndbc' || string_split(archive_url,'/')[-1] as s3_url
 FROM standard_met_full_archive
@@ -59,9 +59,9 @@ def write_standard_met_to_csv(
     output_path:
         Local path for the output CSV, e.g. "./standard_met.csv".
     """
-    conn.install_extension("webbed",repository='community')
+    # conn.install_extension("webbed",repository='community')
     conn.load_extension("webbed")
-    conn.install_extension("crawler",repository='community')
+    # conn.install_extension("crawler",repository='community')
     conn.load_extension("crawler")
     conn.execute(
         f"""
@@ -90,9 +90,9 @@ def write_standard_met_to_s3(
         S3 destination, e.g.
         "s3://my-bucket/path/standard_met.csv".
     """
-    conn.install_extension("webbed",repository='community')
+    # conn.install_extension("webbed",repository='community')
     conn.load_extension("webbed")
-    conn.install_extension("crawler",repository='community')
+    # conn.install_extension("crawler",repository='community')
     conn.load_extension("crawler")
 
     conn.execute(
