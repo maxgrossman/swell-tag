@@ -88,7 +88,7 @@ locals {
 }
 
 resource "aws_iam_policy" "step_function_role_ecs_policy" {
-  name = "step-functions-ecs-policy"
+  name = "step-functions-ecs-policy-${data.aws_region.current.region}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

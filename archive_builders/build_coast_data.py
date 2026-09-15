@@ -80,13 +80,13 @@ select st_simplify(st_union_agg(geom),0.001) from coastal_h3s
 
 
 def _extensions(conn):
-    conn.install_extension('spatial')
+    # conn.install_extension('spatial')
     conn.load_extension('spatial')
-    conn.install_extension('h3', repository='community')
+    # conn.install_extension('h3', repository='community')
     conn.load_extension('h3')
 
 def write_wgs84_coast_to_s3(conn, s3_uri):
-    conn.install_extension('spatial')
+    # conn.install_extension('spatial')
     conn.load_extension('spatial')
     conn.execute(f"""
     COPY ({WGS84_COAST_CSV_QUERY}) TO '{s3_uri}' (FORMAT 'parquet');

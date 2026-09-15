@@ -13,7 +13,7 @@ const query = (lng, lat, isotimestamp) => {
     WITH
     matching_swell_tags as (
         SELECT timestamp_tz, h3_04, swell_tag, date_diff('seconds', timestamp_tz, getvariable('search_timestamp_tz')) as time_dist
-        FROM swell.tags
+        FROM 'data/swell_storage/main/swell_tags/ducklake-01a041ac-3337-7286-9bca-cb3995811471.parquet'
         WHERE h3_04 = h3_latlng_to_cell(${lat},${lng}, 4) AND timestamp_tz BETWEEN '${isotimestamp}'::timestamptz-'30 minutes'::interval
                                                                             AND '${isotimestamp}'::timestamptz+'30 minutes'::interval
         ORDER BY time_dist asc
@@ -22,20 +22,29 @@ const query = (lng, lat, isotimestamp) => {
         SELECT timestamp_tz, h3_04, swell_tag
         FROM matching_swell_tags limit 1
     )
-    select swell.tags.timestamp_tz, 
-           swell.tags.swell_tag as nearby_swell_tags, 
+    select "ducklake-01a041ac-3337-7286-9bca-cb3995811471".timestamp_tz,
+           "ducklake-01a041ac-3337-7286-9bca-cb3995811471".swell_tag as nearby_swell_tags,
            closest_matching_swell_tag.swell_tag as matching_swell_tag,
-           round(array_distance(closest_matching_swell_tag.swell_tag[2:]::double[6], swell.tags.swell_tag[2:]::double[6]),2) as l2_dist
-    from swell.tags 
+           round(array_distance(closest_matching_swell_tag.swell_tag[2:]::double[6],
+           "ducklake-01a041ac-3337-7286-9bca-cb3995811471".swell_tag[2:]::double[6]),2) as l2_dist
+    FROM 'data/swell_storage/main/swell_tags/ducklake-01a041ac-3337-7286-9bca-cb3995811471.parquet'
     join closest_matching_swell_tag on true=true
-    where swell.tags.swell_tag[4] is not null and array_distance(closest_matching_swell_tag.swell_tag[2:]::double[6], swell.tags.swell_tag[2:]::double[6]) < 10 -- very scientific
-    order by swell.tags.h3_04, swell.tags.timestamp_tz asc;
+    where "ducklake-01a041ac-3337-7286-9bca-cb3995811471".swell_tag[4] is not null and array_distance(closest_matching_swell_tag.swell_tag[2:]::double[6],
+        "ducklake-01a041ac-3337-7286-9bca-cb3995811471".swell_tag[2:]::double[6]) < 5 -- very scientific
+    order by "ducklake-01a041ac-3337-7286-9bca-cb3995811471".h3_04, timestamp_tz asc;
     `
     return formatted_q
 }
 
 function printResults(results) {
     console.log(results[0].matching_swell_tag.items)
+    console.log([
+        'timestamp_tz', 'h3_04', 'idw_wave_height',
+        'idw_average_wave_period',
+        'idw_measured_wave_direction',
+        'tide_meters',
+        'wind_speed',
+        'wind_direction'].join(','))
     results.forEach(result => {
         console.log(result.timestamp_tz + ' ' + result.nearby_swell_tags.items + ' l2_dist = ' + result.l2_dist)
     })
@@ -56,7 +65,7 @@ async function main() {
     datetime[0] = datetime[0].replaceAll(':','-')
     const tz_date = new Date(Date.parse(datetime[0] + 'T' + datetime[1] + tags.OffsetTime.description)).toISOString()
 
-    const instance = await duckdb.DuckDBInstance.create(db, {threads: '4'});
+    const instance = await duckdb.DuckDBInstance.create('data/swell_storage/main/swell_tags/ducklake-01a041ac-3337-7286-9bca-cb3995811471.parquet', {threads: '4'});
     const prepared_query = query(lon, lat, tz_date)
     const connection = await instance.connect();
     const result = await connection.runAndReadAll(prepared_query)

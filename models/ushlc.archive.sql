@@ -1,5 +1,5 @@
 MODEL(
-    name ushlc.archive, 
+    name ushlc.archive,
     kind FULL,
     columns (
         uh_id varchar,
@@ -8,4 +8,7 @@ MODEL(
     )
 );
 
-SELECT * FROM read_csv('s3://swell-tags/ushlc_archive.csv')
+LOAD aws;
+LOAD httpfs;
+
+SELECT uh_id, version, archive_url FROM 's3://swell-tags-us-east-1/bronze/ushlc_archive.csv'

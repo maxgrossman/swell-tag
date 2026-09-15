@@ -6,12 +6,12 @@ MODEL(
     start '2000-01-01',
     allow_partials true
 );
-install h3 from community;
-load h3; 
-install spatial;
+
+SET extension_directory = '/var/task';
+load h3;
 load spatial;
 
-with 
+with
 bouy_h3s_radii as (
     select h3_04, unnest(h3_grid_disk_distances_safe(h3_04, floor(60 / (h3_get_hexagon_edge_length_avg(4, 'km') * 2))::integer)[2]) as in_radius_h3_04
     from coast.buffered_h3
@@ -26,10 +26,10 @@ in_radius_stations as (
     select bouy_h3s_radii.h3_04,
            bouy_history_snap.h3_04,
            bouy_history_snap.station_id,
-           bouy_history_snap.geometry, 
+           bouy_history_snap.geometry,
            st_distance_sphere(
             st_point(h3_cell_to_lng(bouy_h3s_radii.h3_04),
-                     h3_cell_to_lat(bouy_h3s_radii.h3_04)), 
+                     h3_cell_to_lat(bouy_h3s_radii.h3_04)),
             bouy_history_snap.geometry
            ) as dist
     from bouy_h3s_radii
@@ -37,9 +37,9 @@ in_radius_stations as (
 ),
 -- then for time period, get me 1 hour sliding windows for ever 30 minutes.
 at_30mins as (
-    select generate_series as timestamp_tz, 
-           generate_series - '30 minute'::interval as lower, 
-           generate_series + '30 minute'::interval as upper 
+    select generate_series as timestamp_tz,
+           generate_series - '30 minute'::interval as lower,
+           generate_series + '30 minute'::interval as upper
     from (
         select * from generate_series(@start_dt, @end_dt, '60 minutes'::interval)
     )
@@ -65,12 +65,12 @@ in_radius_measurements as (
             pow(abs(date_diff('minutes', in_radius_stations_at_30mins.timestamp_tz,ndbc_duck.standard_measurements.timestamp_tz)), 2)
            ),2) as idw
     from in_radius_stations_at_30mins
-    join ndbc_duck.standard_measurements on ndbc_duck.standard_measurements.station_id=in_radius_stations_at_30mins.station_id and 
+    join ndbc_duck.standard_measurements on ndbc_duck.standard_measurements.station_id=in_radius_stations_at_30mins.station_id and
                                             ndbc_duck.standard_measurements.timestamp_tz between lower and upper
 )
 -- love me a group by to get the estimated value at each cell
-select distinct h3_04, 
-       timestamp_tz, 
+select distinct h3_04,
+       timestamp_tz,
        round(sum(idw*wave_height)/sum(idw),2) as idw_wave_height,
        round(sum(idw*average_wave_period)/sum(idw),2) as idw_average_wave_period,
        round(sum(idw*measured_wave_direction)/sum(idw),2) as idw_measured_wave_direction,

@@ -13,29 +13,30 @@ MODEL(
     )
 );
 
-INSTALL httpfs; LOAD httpfs;
-INSTALL spatial; LOAD spatial;
-INSTALL h3 from community; LOAD h3;
+SET extension_directory = '/var/task';
+LOAD httpfs;
+LOAD spatial;
+LOAD h3;
 
 set variable era5_10u_archive_list = (
     select list(parquet_path) from (
-        select parquet_path from era5_duck.archive 
-        where start_timestamp_tz <= @end_dt and 
-              end_timestamp_tz >= @start_dt and 
-              parquet_path ~* '10u'   
+        select parquet_path from era5_duck.archive
+        where start_timestamp_tz <= @end_dt and
+              end_timestamp_tz >= @start_dt and
+              parquet_path ~* '10u'
     )
 );
 
 set variable era5_10v_archive_list = (
     select list(parquet_path) from (
-        select parquet_path from era5_duck.archive 
-        where start_timestamp_tz <= @end_dt and 
-              end_timestamp_tz >= @start_dt and 
-              parquet_path ~* '10v'   
+        select parquet_path from era5_duck.archive
+        where start_timestamp_tz <= @end_dt and
+              end_timestamp_tz >= @start_dt and
+              parquet_path ~* '10v'
     )
 );
 
-WITH 
+WITH
 v_era5 as (
     SELECT h3_cell as h3_04, longitude, latitude, VAR_10V, utc_date, utc_date::varchar as utc_str from read_parquet(getvariable('era5_10v_archive_list'), union_by_name=true)
 ),
@@ -48,8 +49,8 @@ u_era5 as (
 -- evaluated smaller cell. maybe that and a more agressive (smaller) clipping is the way.
 -- can always get the averaging part right and change the coastal indexes later on!
 uv_era5_joined as (
-    SELECT u_era5.h3_04, u_era5.utc_date, 
-           last(u_era5.utc_str) as utc_str, 
+    SELECT u_era5.h3_04, u_era5.utc_date,
+           last(u_era5.utc_str) as utc_str,
            last(u_era5.longitude) as longitude, last(u_era5.latitude) as latitude, avg(VAR_10V) as avg_10v, avg(VAR_10U) as avg_10u
     FROM v_era5 JOIN u_era5 ON u_era5.h3_04 = v_era5.h3_04 AND u_era5.utc_date = v_era5.utc_date
     GROUP BY u_era5.h3_04, u_era5.utc_date

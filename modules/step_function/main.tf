@@ -66,6 +66,11 @@ variable "step_lambdas" {
     }))
 }
 
+variable "database_creds_arn" {
+    type = string
+    default = ""
+}
+
 variable "ecs_tasks" {
   type = map(object({
     name               = string
@@ -73,6 +78,10 @@ variable "ecs_tasks" {
     revision           = string
     container_template = string
   }))
+}
+
+variable "ecs_env_vars" {
+  type = map(string)
 }
 
 variable "step_lambda_env_vars" {
@@ -131,13 +140,6 @@ resource "aws_lambda_function" "function" {
     size = each.value.ephemeral_storage
   }
 
-  # vpc_config {
-  #   subnet_ids         = var.subnet_ids
-  #   security_group_ids = var.security_groups
-  # }
-
-  # depends_on = [aws_iam_role_policy_attachment.lambda_vpc_access]
-
   tags = {
     Name = "${each.key}"
     Environment = "Prod"
@@ -160,7 +162,8 @@ locals {
     { for key, task in var.ecs_tasks: task.container_template => task.name},
     { for i, subnet in var.ecs_subnets: "ecs_private_subnet_${tostring(i)}" => subnet},
     { "ecs_task_security_group": var.ecs_security_group_id },
-    { "ecs_cluster": var.bronze_layer_ecs_cluster_arn }
+    { "ecs_cluster": var.bronze_layer_ecs_cluster_arn },
+    var.ecs_env_vars
   )
   template_vars = merge(local.ecs_task_vars, local.lambda_func_vars)
 }

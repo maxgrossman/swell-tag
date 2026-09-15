@@ -4,19 +4,23 @@ from urllib.parse import urlparse
 
 IDEMP_QUERY = f"""
 current_parquets as (
-    SELECT distinct filename as current_s3_url 
-    FROM read_parquet($raw_archive) 
+    SELECT
+        -- gets the archive time and wind component we can use to join and then ignore.
+        url_decode(string_split(string_split(file,'/')[7],'=')[2])::timestamp as archive_time,
+        lower(string_split(string_split(string_split(file,'/')[8],'=')[2], 'VAR_')[2]) as var
+    FROM glob($raw_archive)
 ),
 partitioned as (
-    select archive_url
-    from read_csv($source_archive)
-    left join current_parquets on current_s3_url = s3_url
-    where current_s3_url is NULL
+    select archive_url from (select * from read_csv($source_archive)) as era5_archive
+    left join current_parquets
+    on era5_archive.start_timestamp_tz=current_parquets.archive_time and
+       regexp_matches(era5_archive.archive_url, current_parquets.var)
+    where current_parquets.var is NULL
 )
 """
 
 
-    # select archive_url, ntile($num_tiles) over (order by $order_key) as part 
+    # select archive_url, ntile($num_tiles) over (order by $order_key) as part
 PARTITION_QUERY = """
 partitioned as (
     select archive_url
@@ -44,7 +48,7 @@ def build_parititon_query(s3_bucket, num_tiles, archive):
     final_query = f"""
     with
     {partition_query}
-    select array_agg(archive_url) as partition_urls 
+    select array_agg(archive_url) as partition_urls
     from (select archive_url, floor(random() * $num_tiles)::INTEGER as partition
           from partitioned)
     group by partition

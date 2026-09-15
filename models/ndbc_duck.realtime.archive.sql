@@ -1,5 +1,5 @@
 MODEL(
-    name ndbc_duck.archive_realtime, 
+    name ndbc_duck.archive_realtime,
     kind FULL,
     columns (
         station_id varchar,
@@ -9,14 +9,14 @@ MODEL(
     )
 );
 
-INSTALL webbed FROM community; INSTALL crawler FROM community;
+SET extension_directory = '/var/task';
 LOAD webbed; LOAD crawler;
 
 WITH
 stations_realtime AS
     (SELECT
         Name[:5] AS station_id,
-        'https://www.ndbc.noaa.gov/data/realtime2/' || Name AS realtime_url, 
+        'https://www.ndbc.noaa.gov/data/realtime2/' || Name AS realtime_url,
         date_trunc('day', current_timestamp - '45 days'::interval) as start_time,
         date_trunc('day', current_timestamp) as end_time
         FROM read_html('https://www.ndbc.noaa.gov/data/realtime2/', 'table',1)

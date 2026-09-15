@@ -54,7 +54,6 @@ resource "aws_security_group" "vpc_endpoint_security_group" {
   }
 }
 
-
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${data.aws_region.subnet_region.region}.ecr.dkr"
@@ -79,6 +78,16 @@ resource "aws_vpc_endpoint" "ecr_api" {
 resource "aws_vpc_endpoint" "cloudwatch_api" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${data.aws_region.subnet_region.region}.logs"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids         = var.private_subnet_ids
+  security_group_ids  = [aws_security_group.vpc_endpoint_security_group.id]
+  tags = {}
+}
+
+resource "aws_vpc_endpoint" "secret_manager_api" {
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${data.aws_region.subnet_region.region}.secretsmanager"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
   subnet_ids         = var.private_subnet_ids

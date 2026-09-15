@@ -1,10 +1,6 @@
-INSTALL crawler from community;
 LOAD crawler;
-INSTALL webbed from community;
 LOAD webbed;
-INSTALL spatial;
 LOAD spatial;
-INSTALL h3 from community;
 LOAD h3;
 
 SET GLOBAL crawler_timeout_ms = 60000; -- 15 seconds
@@ -18,13 +14,13 @@ SET variable linkies = (
 );
 
 COPY (
-    with 
+    with
     xml_docs as (
         select xml_to_json(html['document'])::json as page_json
         from crawl(getvariable('linkies'))
-    ), 
+    ),
     xml_parameters as (
-        select 
+        select
             json_extract(page_json,'$.Envelope.Body.DataInventory.station.@ID')::varchar as station_id,
             json_extract(page_json,'$.Envelope.Body.DataInventory.station.metadata.location.long.#text')::varchar as lon,
             json_extract(page_json,'$.Envelope.Body.DataInventory.station.metadata.location.lat.#text')::varchar as lat,
@@ -35,16 +31,16 @@ COPY (
             ), lambda l: l[1] = '"Verified 6-Minute Water Level"')[1] as tide_range
         from xml_docs
     )
-    select 
+    select
         replace(station_id, '"'::varchar, ''::varchar) as station_id,
         st_point(
-            replace(lon, '"'::varchar,''::varchar)::double, 
+            replace(lon, '"'::varchar,''::varchar)::double,
             replace(lat,'"'::varchar,''::varchar)::double
-        ) as geom,  
+        ) as geom,
         strptime(
             replace((tide_range::json->'*')[2]::varchar || '+00:00', '"'::varchar,''::varchar),
             '%Y-%m-%d %H:%M%z'
-        )::timestamptz as time_start, 
+        )::timestamptz as time_start,
         strptime(
             replace((tide_range::json->'*')[3]::varchar || '+00:00', '"'::varchar,''::varchar),
             '%Y-%m-%d %H:%M%z'

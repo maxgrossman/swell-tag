@@ -18,28 +18,27 @@ MODEL(
         anemom_height double
     )
 );
-  
-INSTALL spatial; LOAD spatial;
-INSTALL webbed FROM community; LOAD webbed; 
-INSTALL h3 FROM community; LOAD h3; 
 
-WITH station_xml as 
-    (SELECT *, unnest(history) as hist
-        FROM read_xml('https://www.ndbc.noaa.gov/metadata/stationmetadata.xml'))
-SELECT 
-    row_number() over (partition by id order by hist.start asc) as station_sk,
-    id as station_id,
+SET extension_directory = '/var/task';
+LOAD aws;
+LOAD httpfs;
+LOAD spatial;
+LOAD webbed;
+LOAD h3;
+
+select
+    station_sk,
+    station_id,
     name,
     owner,
     pgm,
     type,
-    strptime(hist.start, '%Y-%m-%d')::timestamptz as start_time,
-    strptime(hist.stop, '%Y-%m-%d')::timestamptz as end_time,
-    ST_Point(hist.lng::double, hist.lat::double) as geometry,
-    h3_latlng_to_cell(hist.lat::double, hist.lng::double, 4) as h3_04,
-    hist.elev::double as elev,
-    hist.met as met,
-    hist.hull as hull,
-    hist.anemom_height::double as anemom_height
-FROM station_xml
-ORDER BY h3_04, station_id, start_time
+    start_time,
+    end_time,
+    geometry,
+    h3_04,
+    elev,
+    met,
+    hull,
+    anemom_height,
+from 's3://swell-tags-us-east-1/bronze/ndbc_station_dims.parquet'

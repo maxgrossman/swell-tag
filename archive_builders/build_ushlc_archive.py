@@ -55,7 +55,7 @@ def write_uh_slc_to_csv(
     output_path:
         Local path for the output CSV.
     """
-    conn.install_extension("webbed",repository='community')
+    # conn.install_extension("webbed",repository='community')
     conn.load_extension("webbed")
 
     conn.execute(
@@ -86,9 +86,9 @@ def write_uh_slc_to_s3(
         "s3://my-bucket/uhslc/hourly_archives.csv".
     """
     # Required for writing to S3.
-    conn.install_extension("httpfs")
+    # conn.install_extension("httpfs")
     conn.load_extension("httpfs")
-    conn.install_extension("webbed",repository='community')
+    # conn.install_extension("webbed",repository='community')
     conn.load_extension("webbed")
 
     conn.execute(

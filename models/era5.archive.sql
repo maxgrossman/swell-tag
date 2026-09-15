@@ -9,4 +9,8 @@ MODEL(
     )
 );
 
-SELECT * FROM read_csv('s3://swell-tags/ushlc_archive.csv')
+SET extension_directory = '/var/task';
+LOAD aws;
+LOAD httpfs;
+
+SELECT * FROM 's3://swell-tags-us-west-2/bronze/era5_archive.csv'

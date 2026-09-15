@@ -13,9 +13,8 @@ MODEL(
 );
 
 SET threads = 4;
-INSTALL h3 from community;
+SET extension_directory = '/var/task';
 LOAD h3;
-INSTALL spatial;
 LOAD spatial;
 
 SET VARIABLE station_archives = (
@@ -25,7 +24,7 @@ SET VARIABLE station_archives = (
                 '&datum=MLLW&station=' || station_id ||
                 '&time_zone=GMT&units=english&interval=&format=csv&application=NOS.COOPS.TAC.WL' as archive_url
         FROM read_csv('data/coops.archive.csv')
-        WHERE time_start <= @end_dt and 
+        WHERE time_start <= @end_dt and
               time_end >= @start_dt and
               ST_Within(ST_GeomFromText(geom), ST_GeomFromText(@VAR('parent_bbox', 'POLYGON((-180 -90, 180 -90, 180 90,, -180 90, -180 -90))')))
     )
@@ -35,7 +34,7 @@ SET VARIABLE station_archives = (
 with archive as (select station_id, st_geomfromtext(geom) as geom from read_csv('data/coops.archive.csv'))
 --read the csvs from coops; join back on station id to get that h3 cell
 select station_id, h3_latlng_to_cell(st_y(geom),st_x(geom),5) as h3_05,
-       ("Date Time"::varchar || '+00:00')::timestamptz as timestamp_tz, 
+       ("Date Time"::varchar || '+00:00')::timestamptz as timestamp_tz,
        Prediction as water_level_m
 from read_csv(getvariable('station_archives'))
 join archive on archive.station_id=str_split(str_split(filename,'station=')[2],'&')[1]

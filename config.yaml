@@ -3,16 +3,16 @@ disable_anonymized_analytics: true
 cache_dir: "{{ env_var('SQLMESH_CACHE_DIR', './') }}"
 gateways:
   duckdb_local:
-    state_connection: 
+    state_connection:
       type: duckdb
       database: data/sqlmesh_state.db
     connection:
       type: duckdb
       database: data/swell_tags.db
-      extensions: 
+      extensions:
         - spatial
   duckdb_s3:
-    state_connection: 
+    state_connection:
       type: postgres
       host: "{{ env_var('PGHOST') }}"
       port: "{{ env_var('PORT', 5432) }}"
@@ -21,12 +21,10 @@ gateways:
       database: "{{ env_var('PGDATABASE')}}"
     connection:
       type: duckdb
-      database: "s3://swell-tags/swell_tags.duckdb"
-      extensions: 
-        - spatial
-        - httpfs
+      catalogs:
+        remote: "s3://swell-tags-us-east-1/duck/swell_tags.duckdb"
 before_all:
-  - "@IF(@gateway = 'duckdb_s3', @load_s3_lambda_creds())"  
+  - "@IF(@gateway = 'duckdb_s3', @load_s3_lambda_creds())"
 
 default_gateway: duckdb_local
 
@@ -46,7 +44,7 @@ linter:
   enabled: true
   rules:
     # - ambiguousorinvalidcolumn
-    - invalidselectstarexpansion
+    # - invalidselectstarexpansion
     - noambiguousprojections
 
 

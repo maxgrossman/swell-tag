@@ -1,3 +1,5 @@
+import boto3
+import botocore
 import logging
 import os
 import tempfile
@@ -7,6 +9,7 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 import numpy as np
+import s3fs
 
 from itertools import batched
 from shapely import wkb
@@ -15,8 +18,10 @@ from pathlib import Path
 from archive_builders.common import tmp_dir
 from cubed import Spec
 
+from urllib.parse import urlparse
 from bronze.common import build_parititon_query
 from archive_builders.common import tmp_dir, lambda_duck
+
 
 duckdb = lambda_duck
 
@@ -48,18 +53,19 @@ def era5_netcdf_to_parquet(
     wind_vector_dim: str,
     parquet_s3_path: str,
     mask_gdf: gpd.GeoDataFrame,
-    cells_lookup: pd.DataFrame,
-    spec: Spec
+    cells_lookup: dict,
+    s3_client: boto3.session.Session.client
 ):
+    # think downloading the darn thing makes this work faster than the whole s3fs stuff..
+    parsed_url = urlparse(era5_wind_increment_path, allow_fragments=False)
+    bucket_name = parsed_url.netloc
+    key_path = parsed_url.path.lstrip('/')
     with tempfile.TemporaryDirectory(prefix=tmp_dir() +'/') as temp_zarr_dir:
+        netcdf_temp_path = Path(temp_zarr_dir, key_path.split('/')[-1]).as_posix()
         temp_zarr = Path(temp_zarr_dir, 'tmp.zarr').as_posix()
         print('DOWNLOADING ERA5')
-        ds = apply_lon_lat_conventions(xr.open_dataset(
-            era5_wind_increment_path,
-            engine="h5netcdf",
-            chunked_array_type='cubed',
-            from_array_kwargs={'spec': spec}
-        ))
+        s3_client.download_file(Bucket=bucket_name,Key=key_path, Filename=netcdf_temp_path)
+        ds = apply_lon_lat_conventions(xr.open_dataset(netcdf_temp_path,engine="h5netcdf"))
         # rio to make xarray mask from buffer. "clip" the era5 wind to that boundary
         print('SETTING ERA5 projection')
         ds.rio.write_crs("EPSG:4326", inplace=True)
@@ -81,25 +87,38 @@ def era5_netcdf_to_parquet(
         print('MAKE GEOPARQUET')
 
         # with the zarr made, use that duckdb power to write a geoparquet i can just load in to the database.
-        conn.execute("""
+        conn.execute(f"""
             COPY (
                 WITH
-                $wind_vector_dim as (SELECT * FROM read_zarr($temp_zarr, dims=['time','coastal_points'])),
+                zarr_data as (SELECT * FROM read_zarr($temp_zarr, dims=['time','coastal_points'])),
                 time_table as (SELECT * FROM read_zarr($temp_zarr, dims=['time'])),
                 longitude as (select * from read_zarr($temp_zarr, array_path='longitude')),
                 latitude  as (select * from read_zarr($temp_zarr, array_path='latitude'))
-                select $wind_vector_dim,
+                select {wind_vector_dim} as wind_dim_val,
+                       $wind_vector_dim as wind_dim,
                         longitude,
                         latitude,
-                        time_table.utc_date as utc_date,
-                        date_trunc('month', time_table.utc_date) as utc_year,
+                        make_timestamptz(
+                            CAST(substr(time_table.utc_date::varchar, 1, 4) AS INTEGER),
+                            CAST(substr(time_table.utc_date::varchar, 5, 2) AS INTEGER),
+                            CAST(substr(time_table.utc_date::varchar, 7, 2) AS INTEGER),
+                            CAST(substr(time_table.utc_date::varchar, 9, 2) AS INTEGER),
+                            0,0,'utc'::varchar
+                        ) as utc_date,
+                        date_trunc('month',make_timestamp(
+                            CAST(substr(time_table.utc_date::varchar, 1, 4) AS INTEGER),
+                            CAST(substr(time_table.utc_date::varchar, 5, 2) AS INTEGER),
+                            CAST(substr(time_table.utc_date::varchar, 7, 2) AS INTEGER),
+                            CAST(substr(time_table.utc_date::varchar, 9, 2) AS INTEGER),
+                            0,0
+                        )) as utc_month,
                         h3_latlng_to_cell(latitude,longitude,4) as h3_cell
-                from $wind_vector_dim
-                join longitude on $wind_vector_dim.coastal_points = longitude.coastal_points
-                join latitude on $wind_vector_dim.coastal_points = latitude.coastal_points
-                join time_table on $wind_vector_dim.time = time_table.time
+                from zarr_data
+                join longitude on zarr_data.coastal_points = longitude.coastal_points
+                join latitude on zarr_data.coastal_points = latitude.coastal_points
+                join time_table on zarr_data.time = time_table.time
                 order by h3_latlng_to_cell(latitude,longitude,4), time_table.utc_date
-            ) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (utc_month, $wind_vector_dim), APPEND true)
+            ) TO $parquet_s3_path (FORMAT PARQUET, PARTITION_BY (utc_month, wind_dim), APPEND true)
         """, {'wind_vector_dim': wind_vector_dim, 'temp_zarr': temp_zarr, 'parquet_s3_path': parquet_s3_path})
 
 ARCHIVE_QUERY = f"""
@@ -116,35 +135,32 @@ def build_bronze_layer(conn, s3_bucket, partition):
     mask_gdf = gpd.read_parquet(cell_mask_uri)
     mask_gdf.to_crs("EPSG:4326", inplace=True)
     cells_lookup = pd.read_parquet(cell_lookup_uri)
+    lats = cells_lookup['lats'][0]
+    lons = cells_lookup['lons'][0]
 
     archive_info = conn.execute(ARCHIVE_QUERY, {'era5_archive': era5_archive, 'partition': partition}).df()
     archive_urls = list(archive_info['archive_url'])
 
-    conn.install_extension('zarr', repository='community')
     conn.load_extension('zarr')
-    conn.install_extension('h3', repository='community')
     conn.load_extension('h3')
 
     os.environ['AWS_REQUEST_PAYER'] = 'requester'
-    spec = Spec(
-        work_dir=tmp_dir(),
-        allowed_mem='0.5GB',
-        executor="single-threaded"
-    )
-
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("xarray").setLevel(logging.DEBUG)
 
+    s3_client = boto3.client('s3', config=botocore.config.Config(signature_version=botocore.UNSIGNED))
+
     for archive_url in archive_urls:
         wind_vector_dim = 'VAR_10V' if '10v' in archive_url else 'VAR_10U'
+
         era5_netcdf_to_parquet(
             conn=conn,
             era5_wind_increment_path=archive_url,
             wind_vector_dim=wind_vector_dim,
             parquet_s3_path=parquet_s3_path,
             mask_gdf=mask_gdf,
-            cells_lookup=cells_lookup,
-            spec=spec
+            cells_lookup={'lats': lats, 'lons': lons},
+            s3_client=s3_client
         )
 
 def build_bronze_partitions(conn, s3_bucket, num_tiles) -> pd.DataFrame:

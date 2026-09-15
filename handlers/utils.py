@@ -1,3 +1,7 @@
+import os
+import json
+import boto3
+from botocore.exceptions import ClientError
 import itertools
 import subprocess
 from datetime import timedelta
@@ -17,7 +21,7 @@ def split_year(interval, intervals):
 
 def run_shell_cmd(command, run_kwargs={'check':True}):
     print(' '.join(command))
-    subprocess.run(command, **run_kwargs) 
+    subprocess.run(command, **run_kwargs)
 
 def models_to_args(select_models):
     if not select_models:
@@ -46,3 +50,23 @@ def initialize_models(plan_command, select_models):
                 run_shell_cmd(plan_command + model_arg + ['--skip-backfill', '--auto-apply'])
             except Exception:
                 pass
+
+def load_db_credentials(region_name, secret_name):
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    data = json.loads(get_secret_value_response['SecretString'])
+    os.environ['PGPASSWORD'] = data['password']
