@@ -1,11 +1,11 @@
 import json
 import os
 
-def get_rds_secret(rds_database):
+def get_rds_secret(rds_database, region_name):
     import boto3
 
     rds_client = boto3.client('rds')
-    secrets_client = boto3.client('secretsmanager')
+    secrets_client = boto3.client('secretsmanager', region_name=region_name)
 
     # 1. Get the Secret ARN directly from your Aurora Cluster configuration
     cluster_info = rds_client.describe_db_clusters(DBClusterIdentifier='my-aurora-cluster')

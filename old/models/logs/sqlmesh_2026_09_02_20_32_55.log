@@ -1,0 +1,5 @@
+2026-09-02 20:32:55,915 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/swell_tags.db'} (connection.py:513)
+2026-09-02 20:32:55,928 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'s3://swell-tags-data/swell_tags.db'} (connection.py:513)
+2026-09-02 20:32:56,179 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for in-memory database (connection.py:515)
+2026-09-02 20:32:56,179 - ThreadPoolExecutor-0_0 - sqlmesh.core.console - WARNING - Model '"swell_tags"."sqlmesh_example"."full_model"' was not found at /Users/aughra/github/swell-tag/tests/test_full_model.yaml (console.py:2335)
+2026-09-02 20:32:56,181 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/sqlmesh_state.db'} (connection.py:513)

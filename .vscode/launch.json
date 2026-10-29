@@ -11,7 +11,11 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": "${command:pickArgs}"
+            "args": "${command:pickArgs}",
+            "env": {
+                "PYTHONPATH": "${fileDirname}",
+                "TMP_DIR": "/Users/aughra"
+            }
         },
         {
             "name": "Python Debugger: pytest File with Arguments",
@@ -22,7 +26,8 @@
             "args": "${command:pickArgs}",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "layers/handlers/package/python/handlers"
+                "PYTHONPATH": "layers/handlers/package/python/handlers",
+                "TMP_DIR": "/Users/aughra"
             }
         }
     ]

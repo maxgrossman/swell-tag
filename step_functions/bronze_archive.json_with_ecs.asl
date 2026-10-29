@@ -83,7 +83,7 @@
                                         "Overrides": {
                                             "ContainerOverrides": [
                                                 {
-                                                    "Name": "${container_name}",
+                                                    "Name": "${handler_bronze_layer_worker}",
                                                     "Environment": [
                                                         {
                                                             "Name": "STATE_DATA",

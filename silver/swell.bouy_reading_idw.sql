@@ -11,80 +11,101 @@ create table if not exists swell.bouy_reading_idw (
     idw_wind_direction double,
     idw_wind_speed double,
     idw_tide double
-)
+);
 
 with
-bouy_h3s_radii as (
-    select h3_04, unnest(h3_grid_disk_distances_safe(h3_04, floor(60 / (h3_get_hexagon_edge_length_avg(4, 'km') * 2))::integer)[2]) as in_radius_h3_04
-    from coast.buffered_h3s
+coast_grids_grid_disks_list as (
+    select h3_04, h3_grid_disk_distances_safe(h3_04, 2) as in_radius_h3_04
+    from (select distinct h3_04 from coast.buffered_h3s)
 ),
-bouy_history_snap as (
-    select station_id, last(geometry) as geometry, last(bouy_history.h3_04) as h3_04
-    from ndbc_duck.bouy_history
-    join bouy_h3s_radii on bouy_h3s_radii.in_radius_h3_04=bouy_history.h3_04
-    group by station_id
+coast_grids_grid_disks_flat as (
+    select h3_04, list_concat(in_radius_h3_04[2], in_radius_h3_04[3], [h3_04]) as in_radius_h3_04
+    from coast_grids_grid_disks_list
+),
+coast_grids_grid_disks as (
+    select h3_04, unnest(in_radius_h3_04) as in_radius_h3_04
+    from coast_grids_grid_disks_flat
+),
+in_time_stations as (
+    select distinct station_id, h3_04, geometry
+    from ndbc.standard_measurements
+    where timestamp_tz between $start_dt and $end_dt
 ),
 in_radius_stations as (
-    select bouy_h3s_radii.h3_04,
-           bouy_history_snap.h3_04,
-           bouy_history_snap.station_id,
-           bouy_history_snap.geometry,
+    select coast_grids_grid_disks.h3_04,
+           coast_grids_grid_disks.in_radius_h3_04,
+           in_time_stations.station_id,
            st_distance_sphere(
-            st_point(h3_cell_to_lng(bouy_h3s_radii.h3_04),
-                     h3_cell_to_lat(bouy_h3s_radii.h3_04)),
-            bouy_history_snap.geometry
+                st_point(h3_cell_to_lng(coast_grids_grid_disks.h3_04),
+                        h3_cell_to_lat(coast_grids_grid_disks.h3_04)),
+                in_time_stations.geometry
            ) as dist
-    from bouy_h3s_radii
-    join bouy_history_snap on bouy_history_snap.h3_04=in_radius_h3_04
+    from coast_grids_grid_disks
+    join in_time_stations on in_time_stations.h3_04=in_radius_h3_04
 ),
--- then for time period, get me 1 hour sliding windows for ever 30 minutes.
-at_30mins as (
-    select generate_series as timestamp_tz,
-           generate_series - '30 minute'::interval as lower,
-           generate_series + '30 minute'::interval as upper
-    from (
-        select * from generate_series($start_dt::timestamptz, $end_dt::timestamptz, '60 minutes'::interval)
-    )
+-- get the average for each hour where inputs to that average are 30 minutes before and after the top of the hour
+station_measurements_at_hour as (
+   select station_id,
+          case when minute(time_bucket(interval '30 minutes', timestamp_tz)) = 30
+               then time_bucket(interval '30 minutes', timestamp_tz) + '30 minutes'::interval
+               else time_bucket(interval '30 minutes', timestamp_tz) end as timestamp_tz, -- rounds these to the hour
+        avg(case when wave_height == 99.0 then null else wave_height end) as wave_height,
+        avg(case when average_wave_period == 99.0 then null else average_wave_period end) as average_wave_period,
+        avg(case when measured_wave_direction == 999 then null else measured_wave_direction end) as measured_wave_direction,
+        avg(case when tide == 99.0 then null else tide end) as tide,
+        avg(case when wind_direction == 999 then null else wind_direction end) as wind_direction,
+        avg(case when wind_speed == 99.0 then null else wind_speed end) as wind_speed
+    from ndbc.standard_measurements
+    where ndbc.standard_measurements.timestamp_tz between $start_dt and $end_dt
+    group by station_id, case when minute(time_bucket(interval '30 minutes', timestamp_tz)) = 30
+               then time_bucket(interval '30 minutes', timestamp_tz) + '30 minutes'::interval
+               else time_bucket(interval '30 minutes', timestamp_tz) end
+    order by station_id, case when minute(time_bucket(interval '30 minutes', timestamp_tz)) = 30
+               then time_bucket(interval '30 minutes', timestamp_tz) + '30 minutes'::interval
+               else time_bucket(interval '30 minutes', timestamp_tz) end
 ),
--- go join that back with the in 60km away stations
-in_radius_stations_at_30mins as (
-    select h3_04, timestamp_tz, lower, upper, station_id, dist
-    from in_radius_stations join at_30mins on true=true
-),
--- for each h3 cell, 30 minute interval pair, join for each in radius station reading that's in an hour of the timestamp_tz.
--- get the inverse distance weight reading_mm using the space-time dist.
+-- now go join those values back each of the 'in radius of station bouy' h3s...
+-- one thing that could optimize this prolly would be to not do the pow on each row. but tbh still fast enough.
 in_radius_measurements as (
-    select case when ndbc_duck.standard_measurements.wave_height == 99.0 then null else ndbc_duck.standard_measurements.wave_height end as wave_height,
-           case when ndbc_duck.standard_measurements.average_wave_period == 99.0 then null else ndbc_duck.standard_measurements.average_wave_period end as average_wave_period,
-           case when ndbc_duck.standard_measurements.measured_wave_direction == 999.0 then null else ndbc_duck.standard_measurements.measured_wave_direction end as measured_wave_direction,
-           case when ndbc_duck.standard_measurements.tide == 99.0 then null else ndbc_duck.standard_measurements.tide end as tide,
-           case when ndbc_duck.standard_measurements.wind_direction == 999.0 then null else ndbc_duck.standard_measurements.wind_direction end as wind_direction,
-           case when ndbc_duck.standard_measurements.wind_speed == 99.0 then null else ndbc_duck.standard_measurements.wind_speed end as wind_speed,
-           in_radius_stations_at_30mins.h3_04,
-           in_radius_stations_at_30mins.timestamp_tz,
-           pow(sqrt(
-            pow(in_radius_stations_at_30mins.dist,2)+
-            pow(abs(date_diff('minutes', in_radius_stations_at_30mins.timestamp_tz,ndbc_duck.standard_measurements.timestamp_tz)), 2)
-           ),2) as idw
-    from in_radius_stations_at_30mins
-    join ndbc_duck.standard_measurements on ndbc_duck.standard_measurements.station_id=in_radius_stations_at_30mins.station_id and
-                                            ndbc_duck.standard_measurements.timestamp_tz between lower and upper
+    select
+           in_radius_stations.h3_04 as h3_04,
+           dist,
+           case when dist = 0 then null else 1.0 / pow(in_radius_stations.dist, 2) end as idw,
+           station_measurements_at_hour.*
+    from station_measurements_at_hour
+    join in_radius_stations on station_measurements_at_hour.station_id=in_radius_stations.station_id
+    where station_measurements_at_hour.wave_height is not null and station_measurements_at_hour.measured_wave_direction is not null
 ),
-idw_readings as
-    -- love me a group by to get the estimated value at each cell
-    select distinct h3_04,
-        timestamp_tz,
-        round(sum(idw*wave_height)/sum(idw),2) as idw_wave_height,
-        round(sum(idw*average_wave_period)/sum(idw),2) as idw_average_wave_period,
-        round(sum(idw*measured_wave_direction)/sum(idw),2) as idw_measured_wave_direction,
-        round(sum(idw*wind_direction)/sum(idw),2) as idw_wind_direction,
-        round(sum(idw*wind_speed)/sum(idw),2) as idw_wind_speed,
-        round(sum(idw*tide)/sum(idw),2) as idw_tide
-    from in_radius_measurements group by h3_04, timestamp_tz
+-- last, interpolate the idw for each cell...
+idw_readings as (
+    select h3_04, timestamp_tz,
+        round(coalesce(
+            max(CASE WHEN dist = 0 THEN wave_height END),
+            sum(idw*wave_height)/sum(idw)
+        ),2) AS idw_wave_height,
+        round(coalesce(
+            max(CASE WHEN dist = 0 THEN average_wave_period END),
+            sum(idw*average_wave_period)/sum(idw)
+        ),2) AS idw_average_wave_period,
+        round(coalesce(
+            max(CASE WHEN dist = 0 THEN measured_wave_direction END),
+            sum(idw*measured_wave_direction)/sum(idw)
+        ),2) AS idw_measured_wave_direction,
+        round(coalesce(
+            max(CASE WHEN dist = 0 THEN wind_direction END),
+            sum(idw*wind_direction)/sum(idw)
+        ),2) AS idw_wind_direction,
+        round(coalesce(
+            max(CASE WHEN dist = 0 THEN wind_speed END),
+            sum(idw*wind_speed)/sum(idw)
+        ),2) AS idw_wind_speed,
+        round(coalesce(
+            max(CASE WHEN dist = 0 THEN tide END),
+            sum(idw*tide)/sum(idw)
+        ),2) AS idw_tide,
+    from in_radius_measurements
+    group by h3_04, timestamp_tz
     order by h3_04, timestamp_tz
 )
 insert into swell.bouy_reading_idw
 select * from idw_readings s_readings
-anti join swell.bouy_reading_idw t_readings
-on s_readings.h3_04 = t_readings.h3_04 and
-   s_readings.timestamp_tz = t_readings.timestamp_tz

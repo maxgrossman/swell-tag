@@ -76,7 +76,6 @@ variable "ecs_tasks" {
     name               = string
     arn                = string
     revision           = string
-    container_template = string
   }))
 }
 
@@ -159,7 +158,7 @@ locals {
   ecs_task_vars = length(var.ecs_tasks) == 0 ? {} : merge(
     { for key, task in var.ecs_tasks: task.name => task.arn },
     { for key, task in var.ecs_tasks: "${task.name}_revision" => task.revision },
-    { for key, task in var.ecs_tasks: task.container_template => task.name},
+    { for key, task in var.ecs_tasks: "${task.name}_container_name" => task.name },
     { for i, subnet in var.ecs_subnets: "ecs_private_subnet_${tostring(i)}" => subnet},
     { "ecs_task_security_group": var.ecs_security_group_id },
     { "ecs_cluster": var.bronze_layer_ecs_cluster_arn },
@@ -176,4 +175,8 @@ resource "aws_sfn_state_machine" "state_machine" {
 
 output "function_arns" {
   value = [for func in aws_lambda_function.function : func.arn]
+}
+
+output "state_machine_arn" {
+  value = aws_sfn_state_machine.state_machine.arn
 }

@@ -19,20 +19,20 @@ LOAD spatial;
 LOAD h3;
 
 set variable era5_10u_archive_list = (
-    select list(parquet_path) from (
-        select parquet_path from era5_duck.archive
+    select list(s3_url) from (
+        select s3_url from era5_duck.archive
         where start_timestamp_tz <= @end_dt and
               end_timestamp_tz >= @start_dt and
-              parquet_path ~* '10u'
+              s3_url ~* '10u'
     )
 );
 
 set variable era5_10v_archive_list = (
-    select list(parquet_path) from (
-        select parquet_path from era5_duck.archive
+    select list(s3_url) from (
+        select s3_url from era5_duck.archive
         where start_timestamp_tz <= @end_dt and
               end_timestamp_tz >= @start_dt and
-              parquet_path ~* '10v'
+              s3_url ~* '10v'
     )
 );
 

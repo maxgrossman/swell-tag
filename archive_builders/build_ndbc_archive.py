@@ -36,7 +36,7 @@ SELECT
     ) as timestamp_tz,
     station_id,
     archive_url,
-    's3://swell-tags/bronze/ndbc' || string_split(archive_url,'/')[-1] as s3_url
+    's3://swell-tags-us-east-1/bronze/ndbc' || string_split(archive_url,'/')[-1] as s3_url
 FROM standard_met_full_archive
 JOIN stations_metadata
     ON stations_metadata.id = standard_met_full_archive.station_id

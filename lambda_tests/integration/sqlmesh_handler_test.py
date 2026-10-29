@@ -3,7 +3,7 @@ import pytest
 from constants import BASELINE_MODELS, RAW_MODELS
 from utils import year_days
 from sqlmesh_handler import (
-    handler_select_full, 
+    handler_select_baseline,
     handler_select_interval,
     handler_initialize_models,
     handler_ensure_dependencies,
@@ -16,9 +16,9 @@ def test_ensure_dependencies_fails_lambda():
         context={}
     )
     assert result['status'] == 'missing_dependencies'
-    
+
 def test_baseline_lambda():
-    handler_select_full(
+    handler_select_baseline(
         event={'models': BASELINE_MODELS},
         context={}
     )
@@ -56,4 +56,3 @@ def test_build_missing_intervals_handler():
     assert len(intervals) == 27
     for interval in intervals[:-1]:
         assert round((interval[1]-interval[0]).total_seconds()/(60*60*24)) == year_days(interval[0].year)
-    

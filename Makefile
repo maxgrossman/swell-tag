@@ -7,14 +7,13 @@ west_ecr := $(aws_account).dkr.ecr.us-west-2.amazonaws.com
 east_tag := $(east_ecr)/swell-tags:$(tag)
 west_tag := $(west_ecr)/swell-tags:$(tag)
 
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 venv:
 	python -m venv venv && venv/bin/python -m pip install -r requirements.txt
-data/coops.act.geojson:
-	venv/bin/esri2geojson https://mapservices.weather.noaa.gov/static/rest/services/NOS_Observations/CO_OPS_Stations/FeatureServer/0 data/coops.act.geojson
-data/coops.hist.geojson:
-	venv/bin/esri2geojson https://mapservices.weather.noaa.gov/static/rest/services/NOS_Observations/CO_OPS_Stations/FeatureServer/3 data/coops.hist.geojson
-data/coops.archive.csv: data/coops.hist.geojson data/coops.act.geojson
-	duckdb < index_builders/build_coops_archive.sql
 backfill: venv
 	venv/bin/python -m backfill --start_year=$(start_year) --end_year=$(end_year)
 ecr_login:
@@ -27,10 +26,11 @@ ecr_push:
 	docker tag $(east_tag) $(west_tag)
 	docker push $(east_tag)
 	docker push $(west_tag)
+plan:
+	tofu plan
+apply:
+	tofu apply
+auto_apply:
+	tofu apply -auto-approve
 
-
-
-coop_index: data/coop.archive.csv
-
-
-.PHONY: data_index backfill
+.PHONY: apply auto_apply

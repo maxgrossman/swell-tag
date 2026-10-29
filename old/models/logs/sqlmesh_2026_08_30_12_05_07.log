@@ -1,0 +1,7 @@
+2026-08-30 12:05:08,189 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/swell_tags.db'} (connection.py:513)
+2026-08-30 12:05:08,204 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'s3://swell-tags-data/swell_tags.db'} (connection.py:513)
+2026-08-30 12:05:08,489 - MainThread - sqlmesh.core.console - WARNING - Skipping the backfill stage for production can lead to unexpected results, such as tables being empty or incremental data with non-contiguous time ranges being made available.
+If you are doing this deliberately to create an empty version of a table to test a change, please consider using Virtual Data Environments instead. (console.py:2335)
+2026-08-30 12:05:08,492 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for in-memory database (connection.py:515)
+2026-08-30 12:05:08,492 - ThreadPoolExecutor-0_0 - sqlmesh.core.console - WARNING - Model '"swell_tags"."sqlmesh_example"."full_model"' was not found at /Users/aughra/github/swell-tag/tests/test_full_model.yaml (console.py:2335)
+2026-08-30 12:05:08,493 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/sqlmesh_state.db'} (connection.py:513)

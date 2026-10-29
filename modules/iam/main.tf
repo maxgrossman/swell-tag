@@ -122,8 +122,6 @@ resource "aws_iam_role_policy_attachment" "bronze_layer_ecs_executor" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-
-
 output "step_function_role_name" {
     value = aws_iam_role.step_function_role.name
 }
@@ -154,4 +152,8 @@ output "admin_user_role" {
 
 output "step_function_ecs_arn" {
     value = aws_iam_role.bronze_layer_ecs_executor.arn
+}
+
+output "step_function_ecs_name" {
+    value = aws_iam_role.bronze_layer_ecs_executor.name
 }

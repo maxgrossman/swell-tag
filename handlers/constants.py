@@ -22,8 +22,8 @@ BASELINE_MODELS = [
 ]
 
 RAW_MODELS = [
-    'ndbc_duck.raw_measurements',
-    'ndbc_duck.raw_measurements_realtime',
+    # 'ndbc_duck.raw_measurements',
+    # 'ndbc_duck.raw_measurements_realtime',
     'ushlc.station_measurements',
     'era5_duck.wind'
 ]
@@ -34,7 +34,26 @@ INTERPOLATED_MODELS = [
 ]
 
 MERGED_MODELS = [
-    'ndbc_duck.standard_measurements'
+    # 'ndbc_duck.standard_measurements'
 ]
 
 BACKFILLABLE_MODELS = RAW_MODELS + INTERPOLATED_MODELS + MERGED_MODELS
+
+
+MODEL_TO_PATH = {
+    'ndbc.standard_measurements': 'silver/ndbc.standard_measurements.sql',
+    'ndbc.bouy_history': 'silver/ndbc.bouy_history.sql',
+    'ushlc.station_measurements': 'silver/ushlc.station_measurements.sql',
+    'ushlc.stations': 'silver/ushlc.stations.sql',
+    'era5.wind_measurements': 'silver/era5.wind_measurements.sql',
+    'coast.lines': 'silver/coast.lines.sql',
+    'coast.cells_lookup': 'silver/coast.cells_lookup.sql',
+    'coast.buffered_h3s': 'silver/coast.buffered_h3s.sql',
+    'swell.tide_idw': 'silver/swell.tide_idw.sql',
+    'swell.bouy_reading_idw': 'silver/swell.bouy_reading_idw.sql',
+    'swell.tags': 'gold/swell.tags.sql'
+}
+
+PARQUET_PATH_REPLACE = set([
+    'ndbc.standard_measurements'
+])

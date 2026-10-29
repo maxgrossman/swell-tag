@@ -4,6 +4,7 @@ from functools import wraps
 
 @dataclass
 class EventModel:
+    baselines: list[str] = []
     models: list[str]
     ranges: list[list[int]]
     environment: str = 'prod'

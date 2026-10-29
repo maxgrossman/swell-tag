@@ -8,6 +8,10 @@ terraform {
       source  = "kreuzwerker/docker"
       version = "~> 3.0" # Use the latest stable 3.x version
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "5.28.1"
+    }
   }
 
   backend "s3" {
@@ -23,10 +27,17 @@ provider "aws" {
   region = "us-east-1"
 }
 
+provider "cloudflare" {}
+
 # Configure the AWS Providers
 provider "aws" {
   alias = "us_west_2"
   region = "us-west-2"
+}
+
+variable "cloudflare_account_id" {
+  type        = string
+  description = "my account id"
 }
 
 module "iam" {
@@ -94,28 +105,46 @@ locals {
 module "swell_tags_vpc_subnets_us_east_1" {
   source = "./modules/swell_tags_vpc_subnets"
   for_each = local.us_east_1_availability_zones
-  swell_tags_vpc_id             = module.swell_tags_vpc_us_east_1.vcp_id
+  swell_tags_vpc_id             = module.swell_tags_vpc_us_east_1.vpc_id
   swell_tags_availability_zone  = each.value
   swell_tags_vpc_cidr_block     = module.swell_tags_vpc_us_east_1.vpc_cidr_block
   swell_tags_private_cidr_block = cidrsubnet(
     module.swell_tags_vpc_us_east_1.vpc_cidr_block, 8,
     index(tolist(local.us_east_1_availability_zones), each.value)
   )
-  swell_tags_vpc_s3_gateway_id  = module.swell_tags_vpc_us_east_1.vpc_s3_gateway_id
+  swell_tags_private_rt_id      = module.swell_tags_vpc_us_east_1.swell_tags_private_rt_id
+  swell_tags_public_rt_id       = module.swell_tags_vpc_us_east_1.swell_tags_public_rt_id
+  num_availability_zones        = length(local.us_east_1_availability_zones)
+  providers = { aws = aws.us_east_1 }
+}
+
+module "swell_tags_vpc_nacls_us_east_1" {
+  source                    = "./modules/swell_tags_vpc_nacls"
+  swell_tags_vpc_id         = module.swell_tags_vpc_us_east_1.vpc_id
+  swell_tags_public_subnets = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.public_subnet_id]
   providers = { aws = aws.us_east_1 }
 }
 
 module "swell_tags_vpc_subnets_us_west_2" {
   source = "./modules/swell_tags_vpc_subnets"
   for_each = local.us_west_2_availability_zones
-  swell_tags_vpc_id             = module.swell_tags_vpc_us_west_2.vcp_id
+  swell_tags_vpc_id             = module.swell_tags_vpc_us_west_2.vpc_id
   swell_tags_availability_zone  = each.value
   swell_tags_vpc_cidr_block     = module.swell_tags_vpc_us_west_2.vpc_cidr_block
   swell_tags_private_cidr_block = cidrsubnet(
     module.swell_tags_vpc_us_west_2.vpc_cidr_block, 8,
     index(tolist(local.us_west_2_availability_zones), each.value)
   )
-  swell_tags_vpc_s3_gateway_id  = module.swell_tags_vpc_us_west_2.vpc_s3_gateway_id
+  swell_tags_private_rt_id      = module.swell_tags_vpc_us_west_2.swell_tags_private_rt_id
+  swell_tags_public_rt_id       = module.swell_tags_vpc_us_west_2.swell_tags_public_rt_id
+  num_availability_zones        = length(local.us_west_2_availability_zones)
+  providers = { aws = aws.us_west_2 }
+}
+
+module "swell_tags_vpc_nacls_us_west_2" {
+  source                    = "./modules/swell_tags_vpc_nacls"
+  swell_tags_vpc_id         = module.swell_tags_vpc_us_west_2.vpc_id
+  swell_tags_public_subnets = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.public_subnet_id]
   providers = { aws = aws.us_west_2 }
 }
 
@@ -128,23 +157,6 @@ module "aurora_us_east_1" {
   providers              = { aws = aws.us_east_1 }
 }
 
-
-# module "swell_tags_vpc_interface_endpoinds_us_west_2" {
-#   source                      = "./modules/swell_tags_vpc_interface_endpoints"
-#   vpc_id                      = module.swell_tags_vpc_us_west_2.vcp_id
-#   ecs_tasks_security_group_id = module.swell_tags_vpc_us_west_2.ecs_security_group_id
-#   private_subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.subnet_id]
-#   providers                   = { aws = aws.us_west_2 }
-# }
-
-module "swell_tags_vpc_interface_endpoinds_us_east_1" {
-  source                      = "./modules/swell_tags_vpc_interface_endpoints"
-  vpc_id                      = module.swell_tags_vpc_us_east_1.vcp_id
-  ecs_tasks_security_group_id = module.swell_tags_vpc_us_east_1.ecs_security_group_id
-  private_subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.subnet_id]
-  providers                   = { aws = aws.us_east_1 }
-}
-
 module "ecs_bronze_layer_us_west_2" {
   source = "./modules/ecs"
   providers = { aws = aws.us_west_2 }
@@ -152,6 +164,7 @@ module "ecs_bronze_layer_us_west_2" {
   step_function_role_arn = module.iam.step_function_role_arn
   step_function_role_name = module.iam.step_function_role_name
   swell_tags_ecr_repo = module.ecr_us_west_2.swell_tags_ecr_repo
+  task_name           = "bronze_layer_us_west_2"
   tasks = {
     "handler_bronze_layer" = {
       name             = "handler_bronze_layer_worker"
@@ -169,12 +182,44 @@ module "ecs_silver_gold_us_east_1" {
   step_function_role_arn = module.iam.step_function_role_arn
   step_function_role_name = module.iam.step_function_role_name
   swell_tags_ecr_repo = module.ecr_us_east_1.swell_tags_ecr_repo
+  task_name           = "silver_gold_us_east_1"
   tasks = {
-    "handler_select_full" = {
-        name = "handler_select_full_worker"
-        cpu              = 4096
-        memory           = 8192
-        python_snippet   = "import handlers.handler_select_full; handlers.handler_select_full.handler_ecs()"
+    "handler_select_baseline" = {
+        name = "handler_select_baseline_worker"
+        cpu              = 1024
+        memory           = 2048
+        python_snippet   = "import handlers.handler_select_baseline; handlers.handler_select_baseline.handler_ecs()"
+    },
+    "handler_build_missing_intervals" = {
+        name             = "handler_build_missing_intervals_worker"
+        cpu              = 256
+        memory           = 512
+        python_snippet   = "import handlers.handler_build_missing_intervals; handlers.handler_build_missing_intervals.handler_ecs()"
+    },
+    "handler_select_interval" = {
+        name = "handler_select_interval_worker"
+        cpu              = 8192
+        memory           = 16384
+        python_snippet   = "import handlers.handler_select_interval; handlers.handler_select_interval.handler_ecs()"
+    }
+  }
+}
+
+
+module "ecs_export_swell_tags_us_east_1" {
+  source = "./modules/ecs"
+  providers = { aws = aws.us_east_1 }
+  step_function_ecs_arn =  module.iam.step_function_ecs_arn
+  step_function_role_arn = module.iam.step_function_role_arn
+  step_function_role_name = module.iam.step_function_role_name
+  swell_tags_ecr_repo = module.ecr_us_east_1.swell_tags_ecr_repo
+  task_name           = "export_swell_tags_us_east_1"
+  tasks = {
+    "handler_export_swell_tags" = {
+        name = "handler_export_swell_tags_worker"
+        cpu              = 8192
+        memory           = 16384
+        python_snippet   = "import handlers.handler_export_swell_tags; handlers.handler_export_swell_tags.handler_ecs()"
     }
   }
 }
@@ -210,6 +255,51 @@ module "bronze_archive_us_east_1" {
   bronze_layer_ecs_cluster_arn = module.ecs_bronze_layer_us_west_2.bronze_layer_ecs_cluster_arn
 }
 
+module "export_swell_tags_east_1" {
+  source = "./modules/step_function"
+  function_suffix = "us_east_1"
+  providers = { aws = aws.us_east_1 }
+  step_function_role_arn = module.iam.step_function_role_arn
+  step_function_role_id = module.iam.step_function_role_id
+  swell_tags_step_arn = module.iam.swell_tags_step_role
+  swell_tags_step_name = module.iam.swell_tags_step_role_name
+  swell_tags_ecr_repo = module.ecr_us_east_1.swell_tags_ecr_repo
+  security_groups     = [module.swell_tags_vpc_us_east_1.ecs_security_group_id]
+  subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.public_subnet_id]
+  step_function_asl = "export_swell_tags.asl"
+  state_machine_name = "export_swell_tags_us_east_1"
+  step_lambdas        = {}
+  step_lambda_env_vars = {}
+  bronze_layer_ecs_cluster_arn = module.ecs_export_swell_tags_us_east_1.bronze_layer_ecs_cluster_arn
+  ecs_tasks                    = module.ecs_export_swell_tags_us_east_1.ecs_tasks
+  ecs_env_vars                 = {
+    PYTHONPATH      = "/var/task"
+    SQLMESH_GATEWAY = "duckdb_s3"
+    SQLMESH_PATH    = "bin/sqlmesh"
+    SQLMESH_LOG_DIR = "/tmp"
+    SQLMESH_CONFIG_PATH = "/var/task"
+    SQLMESH_DEBUG       = "true"
+    SQLMESH_CACHE_DIR   = "/tmp/cache_dir"
+    SWELL_TAGS_BUCKET   = module.s3_us_east_1.swell_tags_bucket_uri
+    MAX_FORK_WORKERS    = "1"
+    SQLMESH__DISABLE_ANONYMIZED_ANALYTICS = "true"
+    SQLMESH_HOME  = "/tmp"
+    PGDATABASE    = module.aurora_us_east_1.database_name,
+    PGHOST        = module.aurora_us_east_1.database_host,
+    PGUSER        = module.aurora_us_east_1.database_user,
+    PGPORT        = module.aurora_us_east_1.database_port,
+    PGCONNECT_TIMEOUT = 60, # so high because the 'serverless' aurora some time needs to come back to life
+    PGSSLMODE     = "verify-full",
+    PGSSLROOTCERT = "/var/tasks/root.crt"
+    RDSSECRETARN  = module.aurora_us_east_1.database_creds_arn
+    DUCKLAKE_DATAPATH = "s3://swell-tags-us-east-1/swell-tags-ducklake"
+    DATA_INLINING_ROW_LIMIT = 5000
+  }
+  ecs_subnets                  = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.public_subnet_id]
+  ecs_security_group_id        = module.swell_tags_vpc_us_east_1.ecs_security_group_id
+  database_creds_arn           = module.aurora_us_east_1.database_creds_arn
+}
+
 module "silver_and_goald_us_east_1" {
   source = "./modules/step_function"
   function_suffix = "us_east_1"
@@ -220,7 +310,7 @@ module "silver_and_goald_us_east_1" {
   swell_tags_step_name = module.iam.swell_tags_step_role_name
   swell_tags_ecr_repo = module.ecr_us_east_1.swell_tags_ecr_repo
   security_groups     = [module.swell_tags_vpc_us_east_1.ecs_security_group_id]
-  subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.subnet_id]
+  subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.public_subnet_id]
   step_function_asl = "silver_gold_archive.json.asl"
   state_machine_name = "silver_and_gold_us_east_1"
   step_lambdas        = {}
@@ -228,26 +318,29 @@ module "silver_and_goald_us_east_1" {
   bronze_layer_ecs_cluster_arn = module.ecs_silver_gold_us_east_1.bronze_layer_ecs_cluster_arn
   ecs_tasks                    = module.ecs_silver_gold_us_east_1.ecs_tasks
   ecs_env_vars                 = {
-    PYTHONPATH   = "/var/task"
+    PYTHONPATH      = "/var/task"
     SQLMESH_GATEWAY = "duckdb_s3"
-    SQLMESH_PATH = "bin/sqlmesh"
+    SQLMESH_PATH    = "bin/sqlmesh"
     SQLMESH_LOG_DIR = "/tmp"
     SQLMESH_CONFIG_PATH = "/var/task"
-    SQLMESH_DEBUG = "true"
-    SQLMESH_CACHE_DIR = "/tmp/cache_dir"
-    SWELL_TAGS_BUCKET = module.s3_us_east_1.swell_tags_bucket_uri
-    MAX_FORK_WORKERS = "1"
+    SQLMESH_DEBUG       = "true"
+    SQLMESH_CACHE_DIR   = "/tmp/cache_dir"
+    SWELL_TAGS_BUCKET   = module.s3_us_east_1.swell_tags_bucket_uri
+    MAX_FORK_WORKERS    = "1"
     SQLMESH__DISABLE_ANONYMIZED_ANALYTICS = "true"
-    SQLMESH_HOME = "/tmp"
-    PGDATABASE   = module.aurora_us_east_1.database_name,
-    PGHOST       = module.aurora_us_east_1.database_host,
-    PGUSER       = module.aurora_us_east_1.database_user,
-    PGPORT       = module.aurora_us_east_1.database_port,
-    PGSSLMODE    = "verify-full",
-    PGSSLROOTCERT= "/var/tasks/root.crt"
-    RDSSECRETARN = module.aurora_us_east_1.database_creds_arn
+    SQLMESH_HOME  = "/tmp"
+    PGDATABASE    = module.aurora_us_east_1.database_name,
+    PGHOST        = module.aurora_us_east_1.database_host,
+    PGUSER        = module.aurora_us_east_1.database_user,
+    PGPORT        = module.aurora_us_east_1.database_port,
+    PGCONNECT_TIMEOUT = 60, # so high because the 'serverless' aurora some time needs to come back to life
+    PGSSLMODE     = "verify-full",
+    PGSSLROOTCERT = "/var/tasks/root.crt"
+    RDSSECRETARN  = module.aurora_us_east_1.database_creds_arn
+    DUCKLAKE_DATAPATH = "s3://swell-tags-us-east-1/swell-tags-ducklake"
+    DATA_INLINING_ROW_LIMIT = 5000
   }
-  ecs_subnets                  = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.subnet_id]
+  ecs_subnets                  = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.public_subnet_id]
   ecs_security_group_id        = module.swell_tags_vpc_us_east_1.ecs_security_group_id
   database_creds_arn           = module.aurora_us_east_1.database_creds_arn
 }
@@ -319,58 +412,36 @@ resource "aws_iam_role_policy" "step_function_policy" {
         Effect   = "Allow"
         Action   = ["ecs:RunTask"]
         Resource = [for key, task in module.ecs_bronze_layer_us_west_2.ecs_tasks : "${task.arn}:${task.revision}"]
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_states_policy" {
+  name = "ecs_role_update_step_function_states"
+  role = module.iam.step_function_role_id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["states:SendTaskSuccess", "states:SendTaskFailure"]
+        Resource = [
+          module.bronze_archive_us_west_2.state_machine_arn,
+          module.bronze_archive_us_east_1.state_machine_arn,
+          module.silver_and_goald_us_east_1.state_machine_arn,
+          module.export_swell_tags_east_1.state_machine_arn
+        ]
       }
     ]
   })
 }
 
-# module "silver_and_gold_us_east_1" {
-#   source = "./modules/step_function"
-#   providers = { aws = aws.us_east_1 }
-#   swell_tags_step_arn = module.iam.swell_tags_step_role
-#   swell_tags_step_name = module.iam.swell_tags_step_role_name
-#   swell_tags_ecr_repo = module.ecr.swell_tags_ecr_repo
-#   security_groups     = [] # should be security group out of us east 1 vpc
-#   subnet_ids          = [] # should be subnets out of subnets us east 1
-#   step_function_arn = module.iam.step_function_arn
-#   step_function_name = "silver_gold_archive.json.asl"
-#   step_lambdas        = {
-#     "handler_select_full" = {
-#         handler = "handler_select_full"
-#         lambda_memory = 512
-#         ephemeral_storage = 512
-#         timeout = 60
-#     },
-#     "handler_initialize_models" = {
-#         handler = "handler_initialize_models"
-#         lambda_memory = 256
-#         ephemeral_storage = 512
-#         timeout = 60
-#     },
-#     "handler_build_missing_intervals" = {
-#         handler = "handler_build_missing_intervals"
-#         lambda_memory = 128
-#         ephemeral_storage = 512
-#         timeout = 60
-#     },
-#     "handler_select_interval" = {
-#         handler = "handler_select_interval"
-#         lambda_memory = 2056
-#         ephemeral_storage = 10240
-#         timeout = 60
-#     }
-#   }
-#   step_lambda_env_vars = {
-#       PYTHONPATH = "/var/task"
-#       PGHOST = module.aurora_us_east_1.database_host
-#       PGPORT = module.aurora_us_east_1.database_port
-#       PGUSER = module.aurora_us_east_1.database_user
-#       PGDATABASE = module.aurora_us_east_1.database_name
-#   }
-#   ecs_tasks          = {}
-#   ecs_subnets        = []
-# }
-
+resource "cloudflare_r2_bucket" "swell-tag" {
+  account_id = var.cloudflare_account_id
+  name       = "swell-tag"
+  location   = "WNAM"
+}
 
 output "ecs_tasks_us_west_2" {
   value = module.ecs_bronze_layer_us_west_2.ecs_tasks

@@ -9,6 +9,10 @@ terraform {
 
 data "aws_region" "current" {}
 
+variable "task_name" {
+    type = string
+}
+
 variable "step_function_ecs_arn" {
     type = string
 }
@@ -88,7 +92,7 @@ locals {
 }
 
 resource "aws_iam_policy" "step_function_role_ecs_policy" {
-  name = "step-functions-ecs-policy-${data.aws_region.current.region}"
+  name = "step-functions-ecs-policy-${var.task_name}-${data.aws_region.current.region}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -143,10 +147,9 @@ output "bronze_layer_ecs_cluster_arn" {
 output "ecs_tasks" {
     value = {
         for key, task in aws_ecs_task_definition.bronze_layer_task : key => {
-            name               = task.family
-            arn                = task.arn_without_revision
-            revision           = task.revision
-            container_template = "container_name"
+            name           = task.family
+            arn            = task.arn_without_revision
+            revision       = task.revision
         }
     }
 }

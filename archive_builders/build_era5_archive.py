@@ -25,7 +25,7 @@ def get_object_keys(s3_client, bucket_name, start_year, end_year, object_filter)
             for page in page_iterator:
                 if 'Contents' not in page:
                     continue
-            
+
                 for obj in page['Contents']:
                     if object_filter(obj) == False:
                         continue
@@ -40,7 +40,7 @@ def era_5_archive_sql(tmp_file_name):
         strptime(archive_file[-24:-15], '%Y%m%d%H')::timestamptz at time zone 'utc' as start_timestamp_tz,
         strptime(archive_file[-13:-4], '%Y%m%d%H')::timestamptz at time zone 'utc' as end_timestamp_tz,
         's3://nsf-ncar-era5/' || archive_file as archive_url,
-        's3://swell-tags/bronze/era5' || regexp_replace(string_split(archive_file,'/')[-1], 'nc', 'parquet') as s3_url     
+        's3://swell-tags-us-west-2/bronze/era5' || regexp_replace(string_split(archive_file,'/')[-1], 'nc', 'parquet') as s3_url
     FROM era_index
     """
 
@@ -52,7 +52,7 @@ def write_era5_to_csv_path(
         all_keys = list(get_object_keys(get_client(), 'nsf-ncar-era5', 2000, 2027, lambda obj: '_10v' in obj['Key'] or '_10u' in obj['Key']))
         tmp_file.write('\n'.join(all_keys).encode('utf-8'))
         tmp_file.seek(0)
-        conn.execute(f""" 
+        conn.execute(f"""
             COPY (
                 {era_5_archive_sql(tmp_file_name=tmp_file.name)}
             ) TO '{csv_path}'
@@ -67,7 +67,7 @@ def write_era5_to_s3(
         all_keys = list(get_object_keys(get_client(), 'nsf-ncar-era5', 2000, 2027, lambda obj: '_10v' in obj['Key'] or '_10u' in obj['Key']))
         tmp_file.write('\n'.join(all_keys).encode('utf-8'))
         tmp_file.seek(0)
-        conn.execute(f""" 
+        conn.execute(f"""
             INSTALL httpfs;
             LOAD httpfs;
             COPY (

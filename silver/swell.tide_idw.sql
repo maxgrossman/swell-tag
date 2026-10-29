@@ -10,63 +10,66 @@ create table if not exists swell.tide_idw (
 );
 
 with
-bouy_h3s_radii_list as (
-    select h3_04, h3_grid_disk_distances_safe(h3_04, floor(60 / (h3_get_hexagon_edge_length_avg(4, 'km') * 2))::integer) as in_radius_h3_04
-    from coast.buffered_h3s
-),
-bouy_h3s_radii as (
-    select h3_04, unnest(list_concat(in_radius_h3_04[1], in_radius_h3_04[2])) as in_radius_h3_04
-    from bouy_h3s_radii_list
-),
-in_radius_stations as (
-    select bouy_h3s_radii.h3_04, ushlc.stations.uh_id, ushlc.stations.version,
-           st_distance_sphere(
-            st_point(h3_cell_to_lng(bouy_h3s_radii.h3_04),
-                     h3_cell_to_lat(bouy_h3s_radii.h3_04)),
-            ushlc.stations.geometry
-           ) as dist
-    from bouy_h3s_radii
-    join ushlc.stations on ushlc.stations.h3_04=in_radius_h3_04
-),
--- then for time period, get me 1 hour sliding windows for ever 30 minutes.
-at_30mins as (
-    select generate_series as timestamp_tz,
-           generate_series - '30 minute'::interval as lower,
-           generate_series + '30 minute'::interval as upper
+-- do a grid disk around each h3 cell roughly 45km.
+-- idea is we will only do IDW when there is a bouy we query later
+-- that is within that query radius
+coast_grids_grid_disks_list as (
+    select h3_04, h3_grid_disk_distances_safe(h3_04, 3) as in_radius_h3_04
     from (
-        select * from generate_series($start_dt::timestamptz, $end_dt::timestamptz, '60 minutes'::interval)
+      -- very fun thing to not forget that buffering coastlines that are in the same
+      -- h3 index will mean there are m
+      select distinct h3_04 from coast.buffered_h3s
     )
 ),
--- go join that back with the in 60km away stations
-in_radius_stations_at_30mins as (
-    select h3_04, timestamp_tz, lower, upper, uh_id, version, dist
-    from in_radius_stations join at_30mins on true=true
+coast_grids_grid_disks_flat as (
+    select h3_04, list_concat([h3_04],in_radius_h3_04[2], in_radius_h3_04[3]) as in_radius_h3_04
+    from coast_grids_grid_disks_list
 ),
--- for each h3 cell, 30 minute interval pair, join for each in radius station reading that's in an hour of the timestamp_tz.
--- get the inverse distance weight reading_mm using the space-time dist.
-in_radius_measurements as (
-    select ushlc.station_measurements.reading_mm,
-           ushlc.station_measurements.timestamp_tz,
-           in_radius_stations_at_30mins.h3_04,
-           in_radius_stations_at_30mins.timestamp_tz,
-           ushlc.station_measurements.reading_mm,
-           pow(sqrt(
-            pow(in_radius_stations_at_30mins.dist,2)+
-            pow(abs(date_diff('minutes', in_radius_stations_at_30mins.timestamp_tz,ushlc.station_measurements.timestamp_tz)), 2)
-           ),2) as idw
-    from in_radius_stations_at_30mins
-    join ushlc.station_measurements on ushlc.station_measurements.uh_id=in_radius_stations_at_30mins.uh_id and
-                                       ushlc.station_measurements.version=in_radius_stations_at_30mins.version
-    where ushlc.station_measurements.timestamp_tz between lower and upper
+coast_grids_grid_disks as (
+    select h3_04, unnest(in_radius_h3_04) as in_radius_h3_04
+    from coast_grids_grid_disks_flat
+),
+-- finding the stations in radius, joining by asking 'what are the stations in that grid disk'
+-- capture the spherical distance to do the idw later.
+in_radius_stations as (
+    select coast_grids_grid_disks.h3_04,
+            in_radius_h3_04,
+            (printf('%03d', ushlc.stations.uh_id) || ushlc.stations.version) as station_id,
+            st_distance_sphere(
+                st_point(h3_cell_to_lng(coast_grids_grid_disks.h3_04),
+                        h3_cell_to_lat(coast_grids_grid_disks.h3_04)),
+                ushlc.stations.geometry
+            ) as dist
+    from coast_grids_grid_disks
+    join ushlc.stations on ushlc.stations.h3_04=in_radius_h3_04
+),
+-- then go and get the stations for the year, capturing the the distance
+-- and original h3_04 that we looked for the bouys with
+stations_of_the_year as (
+    select
+        ushlc.station_measurements.station_id,
+        ushlc.station_measurements.timestamp_tz,
+        ushlc.station_measurements.reading_mm,
+        in_radius_stations.h3_04 as coast_buffered_h3_04,
+        dist,
+        case when dist = 0 then null else 1.0 / pow(dist, 2) end as idw,
+    from ushlc.station_measurements
+    join in_radius_stations on in_radius_stations.station_id=ushlc.station_measurements.station_id
+    where timestamp_tz between $start_dt and $end_dt
+    and reading_mm >= -2743 -- unscientific but saw some bogus tides that were -10 feet and afaik that's not happening
+                            -- since alaska i think can get really crazy negative tides, for those looking at alaska surf
+                            -- cut it off at ~ -9ft
 ),
 idw_tide_readings as (
-    -- love me a group by to get the estimated value at each cell
-    select h3_04, timestamp_tz, round(sum(idw*reading_mm)/sum(idw),2) as idw_mm
-    from in_radius_measurements group by h3_04, timestamp_tz
-    order by h3_04, timestamp_tz
+    select coast_buffered_h3_04 as h3_04,
+           timestamp_tz,
+           round(coalesce(
+                max(CASE WHEN dist = 0 THEN reading_mm END),
+                sum(idw*reading_mm)/sum(idw)
+            ),2) AS idw_mm
+    from stations_of_the_year
+    group by coast_buffered_h3_04, timestamp_tz
+    order by coast_buffered_h3_04, timestamp_tz
 )
 insert into swell.tide_idw
 select * from idw_tide_readings s_readings
-anti join swell.tide_idw t_readings
-on t_readings.h3_04 = s_readings.h3_04 and
-   t_readings.h3_04 = s_readings.h3_04;

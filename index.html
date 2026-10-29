@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>swell-tag</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
+<style>
+  :root { --bg:#f6f7f5; --panel:#fff; --ink:#1c2a2a; --mute:#5d6b6b; --line:#d5dad8; --accent:#0b6e6e; --err:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141a1a; --panel:#1d2525; --ink:#e6eeee; --mute:#9db0b0; --line:#34413f; --accent:#4cc3c3; --err:#ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  header { display:flex; gap:1rem; align-items:center; padding:.6rem 1rem; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  h1 { font-size:1.05rem; margin:0; font-weight:650; }
+  nav button { background:none; border:0; border-bottom:2px solid transparent; padding:.4rem .8rem; font:inherit; color:var(--mute); cursor:pointer; }
+  nav button[aria-selected=true] { color:var(--ink); border-color:var(--accent); }
+  #status { margin-left:auto; color:var(--mute); font-size:.85rem; }
+  #status.err { color:var(--err); }
+  main { padding:1rem; max-width:1200px; margin:auto; }
+  section[hidden] { display:none; }
+  #map { height:55vh; min-height:340px; border:1px solid var(--line); border-radius:6px; }
+  .bar { display:flex; gap:.6rem; align-items:center; margin:.7rem 0; flex-wrap:wrap; }
+  button.primary { background:var(--accent); color:#fff; border:0; padding:.5rem 1rem; border-radius:5px; font:inherit; cursor:pointer; }
+  @media (prefers-color-scheme: dark) { button.primary { color:#102020; } }
+  button.primary:disabled { opacity:.5; cursor:default; }
+  table { border-collapse:collapse; width:100%; font-size:.88rem; }
+  th, td { text-align:left; padding:.35rem .6rem; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { position:sticky; top:0; background:var(--panel); cursor:pointer; user-select:none; }
+  .scroll { overflow:auto; max-height:45vh; border:1px solid var(--line); border-radius:6px; background:var(--panel); }
+  .cols { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.85rem; margin:.5rem 0; }
+  .muted { color:var(--mute); }
+  input[type=file] { font:inherit; }
+  .lineRow { display:flex; gap:.8rem; align-items:center; margin:.25rem 0 .6rem; font-size:.9rem; flex-wrap:wrap; }
+  .lineRow button { font:inherit; padding:.15rem .7rem; cursor:pointer; }
+  #matchPanel { display:grid; grid-template-columns:minmax(12rem,16rem) 1fr; gap:1rem; grid-template-columns: 2fr 1fr 1fr; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:.7rem; margin-bottom:.8rem; }
+  #matchPanel[hidden] { display:none; }
+  #matchPanel .matchList { max-height:340px; }
+  @media (max-width:640px) { #matchPanel { grid-template-columns:1fr; } }
+  #swellCompare th { position:static; cursor:default; }
+  #swellCompare table { width:auto; min-width:22rem; margin-top:.5rem; }
+  .matchList { list-style:none; margin:0; padding:0; max-height:45vh; overflow:auto; border:1px solid var(--line); border-radius:6px; background:var(--panel); }
+  .matchList li { padding:.4rem .8rem; border-bottom:1px solid var(--line); cursor:pointer; }
+  .matchList li:hover, .matchList li.active { background:color-mix(in srgb, var(--accent) 16%, transparent); }
+  #photoNav { display:flex; gap:.5rem; align-items:center; margin-bottom:.6rem; }
+  #photoNav[hidden] { display:none; }
+  #photoNav .chips { display:flex; gap:.4rem; overflow-x:auto; flex:1; padding:.2rem; }
+  #photoNav .step { font:inherit; padding:.3rem .7rem; cursor:pointer; }
+  .chip { flex:none; display:flex; align-items:center; gap:.4rem; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:6px; padding:.2rem .5rem .2rem .2rem; font:inherit; font-size:.8rem; cursor:pointer; max-width:12rem; }
+  .chip img { width:34px; height:34px; object-fit:cover; border-radius:4px; }
+  .chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip[aria-selected=true] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  #photoThumb { width:100%; object-fit:contain; background:var(--bg); border-radius:6px; margin-bottom:.5rem; }
+  #photoMap { height:300px; border:1px solid var(--line); border-radius:6px; margin-bottom:.8rem; }
+  .cmp { display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap; }
+  .cmp figure { margin:0; text-align:center; font-size:.85rem; }
+ .sw { display:inline-block; width:.7rem; height:.7rem; border-radius:50%; margin-right:.3rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>swell-tag</h1>
+  <nav role="tablist">
+    <button role="tab" aria-selected="false" data-tab="mapTab">Map lines</button>
+    <button role="tab" aria-selected="true" data-tab="photoTab">Photos</button>
+  </nav>
+  <span id="status" class="">251 rows returned</span>
+</header>
+
+<main>
+  <section id="mapTab" hidden="">
+    <div id="map" class="leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom" style="position: relative;" tabindex="0"><div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(-272px, -363px, 0px);"><div class="leaflet-pane leaflet-tile-pane"><div class="leaflet-layer " style="z-index: 1; opacity: 1;"><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 19; transform: translate3d(0px, 0px, 0px) scale(1);"><img alt="" src="https://tile.openstreetmap.org/10/62/449.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(14px, 115px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/63/449.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(270px, 115px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/62/450.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(14px, 371px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/63/450.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(270px, 371px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/62/448.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(14px, -141px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/63/448.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(270px, -141px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/61/449.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-242px, 115px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/64/449.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(526px, 115px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/61/450.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-242px, 371px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/64/450.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(526px, 371px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/62/451.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(14px, 627px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/63/451.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(270px, 627px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/61/448.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-242px, -141px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/64/448.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(526px, -141px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/61/451.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-242px, 627px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/10/64/451.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(526px, 627px, 0px); opacity: 1;"></div></div></div><div class="leaflet-pane leaflet-overlay-pane"></div><div class="leaflet-pane leaflet-shadow-pane"></div><div class="leaflet-pane leaflet-marker-pane"></div><div class="leaflet-pane leaflet-tooltip-pane"></div><div class="leaflet-pane leaflet-popup-pane"></div><div class="leaflet-proxy leaflet-zoom-animated" style="transform: translate3d(16130px, 115192px, 0px) scale(512);"></div></div><div class="leaflet-control-container"><div class="leaflet-top leaflet-left"><div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="#" title="Zoom in" role="button" aria-label="Zoom in" aria-disabled="false"><span aria-hidden="true">+</span></a><a class="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out" aria-disabled="false"><span aria-hidden="true">−</span></a></div><div class="leaflet-draw leaflet-control"><div class="leaflet-draw-section"><div class="leaflet-draw-toolbar leaflet-bar leaflet-draw-toolbar-top"><a class="leaflet-draw-draw-polyline" href="#" title="Draw a polyline"><span class="sr-only">Draw a polyline</span></a></div><ul class="leaflet-draw-actions"></ul></div><div class="leaflet-draw-section"><div class="leaflet-draw-toolbar leaflet-bar"><a class="leaflet-draw-edit-edit leaflet-disabled" href="#" title="No layers to edit"><span class="sr-only">Edit layers</span></a><a class="leaflet-draw-edit-remove leaflet-disabled" href="#" title="No layers to delete"><span class="sr-only">Delete layers</span></a></div><ul class="leaflet-draw-actions"></ul></div></div></div><div class="leaflet-top leaflet-right"></div><div class="leaflet-bottom leaflet-left"></div><div class="leaflet-bottom leaflet-right"><div class="leaflet-control-attribution leaflet-control"><a href="https://leafletjs.com" title="A JavaScript library for interactive maps"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"></path><path fill="#FFD500" d="M0 4h12v3H0z"></path><path fill="#E0BC00" d="M0 7h12v1H0z"></path></svg> Leaflet</a> <span aria-hidden="true">|</span> © OpenStreetMap contributors</div></div></div></div>
+    <div class="bar">
+      <label>Wind spread ±<output id="windVal">20</output>°
+        <input type="range" id="windSpread" min="1" max="90" value="20">
+      </label>
+      <label>Swell spread ±<output id="swellVal">20</output>°
+        <input type="range" id="swellSpread" min="1" max="90" value="20">
+      </label>
+      <button class="primary" id="runLines" disabled="">Run query on all lines</button>
+      <span id="lineInfo" class="muted">Draw one or more lines with the line tool (top left of the map).</span>
+    </div>
+    <div id="lineList"></div>
+    <div id="linesOut"></div>
+  </section>
+
+  <section id="photoTab">
+    <div class="bar">
+      <input type="file" id="files" accept="image/*" multiple="">
+      <button class="primary" id="runPhotos">Run query on photos</button>
+    </div>
+    <p class="muted">Photos stay in your browser. Only the extracted metadata is sent to your SQL.</p>
+    <div id="photoNav"><button class="step" disabled="">◀</button><div class="chips"><button class="chip" aria-selected="true"><img src="blob:http://localhost:3000/3c072f9b-0ba7-4f44-9cbf-660840de94a1" alt=""><span>8FE173E8-C365-42AF-AE24-59716B8D3BF8_1_105_c.jpeg (251)</span></button></div><button class="step" disabled="">▶</button><span class="muted">1 / 1</span></div>
+    <div id="matchPanel">
+      <div>
+        <img id="photoThumb" alt="" src="blob:http://localhost:3000/3c072f9b-0ba7-4f44-9cbf-660840de94a1">
+        <div id="photoInfo"><div class="muted" style="margin-bottom:.6rem;font-size:.85rem"><strong style="color:var(--ink)">8FE173E8-C365-42AF-AE24-59716B8D3BF8_1_105_c.jpeg</strong><br>2022-03-03 07:27:52<br>32.88876, -117.25123</div></div>
+      </div>
+      <div id="swellCompare">
+    <div class="cmp">
+      <figure><svg viewBox="0 0 160 160" width="160" height="160">
+    <circle cx="80" cy="80" r="62" fill="none" stroke-width="1.5" style="stroke:var(--line)"></circle><text x="80" y="12" text-anchor="middle" font-size="11" style="fill:var(--mute)">N</text><text x="150" y="84" text-anchor="middle" font-size="11" style="fill:var(--mute)">E</text><text x="80" y="156" text-anchor="middle" font-size="11" style="fill:var(--mute)">S</text><text x="10" y="84" text-anchor="middle" font-size="11" style="fill:var(--mute)">W</text>
+    <g transform="rotate(282.29 80 80)"><line x1="80" y1="80" x2="80" y2="34" stroke="#2b7bd9" stroke-width="3"></line></g><g transform="rotate(167.23 80 80)"><line x1="80" y1="80" x2="80" y2="34" stroke="#d9822b" stroke-width="3"></line></g>
+    <circle cx="80" cy="80" r="3" style="fill:var(--ink)"></circle></svg><figcaption>tags_swell_tag</figcaption></figure><figure><svg viewBox="0 0 160 160" width="160" height="160">
+    <circle cx="80" cy="80" r="62" fill="none" stroke-width="1.5" style="stroke:var(--line)"></circle><text x="80" y="12" text-anchor="middle" font-size="11" style="fill:var(--mute)">N</text><text x="150" y="84" text-anchor="middle" font-size="11" style="fill:var(--mute)">E</text><text x="80" y="156" text-anchor="middle" font-size="11" style="fill:var(--mute)">S</text><text x="10" y="84" text-anchor="middle" font-size="11" style="fill:var(--mute)">W</text>
+    <g transform="rotate(282.29 80 80)"><line x1="80" y1="80" x2="80" y2="34" stroke="#2b7bd9" stroke-width="3"></line></g><g transform="rotate(167.23 80 80)"><line x1="80" y1="80" x2="80" y2="34" stroke="#d9822b" stroke-width="3"></line></g>
+    <circle cx="80" cy="80" r="3" style="fill:var(--ink)"></circle></svg><figcaption>swell_tag</figcaption></figure>
+      <div><strong>8FE173E8-C365-42AF-AE24-59716B8D3BF8_1_105_c.jpeg</strong><br>
+        <span class="sw" style="background:#2b7bd9"></span>swell direction<br><span class="sw" style="background:#d9822b"></span>wind direction</div>
+    </div>
+    <table><thead><tr><th></th><th>tags_swell_tag</th><th>swell_tag</th><th>Δ (2nd − 1st)</th></tr></thead>
+    <tbody><tr><td>Wave height (ft)</td><td>1.04</td><td>1.04</td><td>0</td></tr><tr><td>Swell period (s)</td><td>10.03</td><td>10.03</td><td>0</td></tr><tr><td>Tide (m)</td><td>3.13</td><td>3.13</td><td>0</td></tr><tr><td>Wind speed (m/s)</td><td>2.84</td><td>2.84</td><td>0</td></tr><tr><td>Swell direction °</td><td>282.29</td><td>282.29</td><td>0</td></tr><tr><td>Wind direction °</td><td>167.23</td><td>167.23</td><td>0</td></tr></tbody></table></div>
+      <div id="matchList"><ul class="matchList"><li tabindex="0" class="active"><strong>2022-03-03 16:00:00-01</strong></li><li tabindex="0"><strong>2022-12-27 17:00:00-01</strong></li><li tabindex="0"><strong>2020-12-28 05:00:00-01</strong></li><li tabindex="0"><strong>2005-04-24 06:00:00-01</strong></li><li tabindex="0"><strong>2006-02-09 16:00:00-01</strong></li><li tabindex="0"><strong>2024-01-25 10:00:00-01</strong></li><li tabindex="0"><strong>2008-01-04 08:00:00-01</strong></li><li tabindex="0"><strong>2006-11-24 17:00:00-01</strong></li><li tabindex="0"><strong>2022-12-30 06:00:00-01</strong></li><li tabindex="0"><strong>2021-11-06 02:00:00-01</strong></li><li tabindex="0"><strong>2024-01-25 09:00:00-01</strong></li><li tabindex="0"><strong>2003-12-23 19:00:00-01</strong></li><li tabindex="0"><strong>2022-03-03 13:00:00-01</strong></li><li tabindex="0"><strong>2023-01-05 05:00:00-01</strong></li><li tabindex="0"><strong>2017-04-08 11:00:00-01</strong></li><li tabindex="0"><strong>2019-01-11 22:00:00-01</strong></li><li tabindex="0"><strong>2018-10-03 16:00:00-01</strong></li><li tabindex="0"><strong>2023-02-19 17:00:00-01</strong></li><li tabindex="0"><strong>2019-01-05 16:00:00-01</strong></li><li tabindex="0"><strong>2007-05-01 09:00:00-01</strong></li><li tabindex="0"><strong>2019-12-22 18:00:00-01</strong></li><li tabindex="0"><strong>2008-05-22 08:00:00-01</strong></li><li tabindex="0"><strong>2022-04-06 04:00:00-01</strong></li><li tabindex="0"><strong>2023-01-14 17:00:00-01</strong></li><li tabindex="0"><strong>2006-02-14 03:00:00-01</strong></li><li tabindex="0"><strong>2005-12-12 07:00:00-01</strong></li><li tabindex="0"><strong>2007-03-24 04:00:00-01</strong></li><li tabindex="0"><strong>2016-04-09 16:00:00-01</strong></li><li tabindex="0"><strong>2022-12-29 14:00:00-01</strong></li><li tabindex="0"><strong>2022-12-05 06:00:00-01</strong></li><li tabindex="0"><strong>2009-05-08 15:00:00-01</strong></li><li tabindex="0"><strong>2006-07-17 09:00:00-01</strong></li><li tabindex="0"><strong>2023-12-30 14:00:00-01</strong></li><li tabindex="0"><strong>2022-12-30 13:00:00-01</strong></li><li tabindex="0"><strong>2017-10-21 07:00:00-01</strong></li><li tabindex="0"><strong>2018-10-30 10:00:00-01</strong></li><li tabindex="0"><strong>2022-03-03 04:00:00-01</strong></li><li tabindex="0"><strong>2019-01-15 21:00:00-01</strong></li><li tabindex="0"><strong>2021-01-22 16:00:00-01</strong></li><li tabindex="0"><strong>2006-11-24 16:00:00-01</strong></li><li tabindex="0"><strong>2022-01-18 03:00:00-01</strong></li><li tabindex="0"><strong>2023-12-07 16:00:00-01</strong></li><li tabindex="0"><strong>2020-04-07 18:00:00-01</strong></li><li tabindex="0"><strong>2007-04-16 14:00:00-01</strong></li><li tabindex="0"><strong>2008-06-05 07:00:00-01</strong></li><li tabindex="0"><strong>2007-02-20 18:00:00-01</strong></li><li tabindex="0"><strong>2024-04-30 10:00:00-01</strong></li><li tabindex="0"><strong>2023-02-21 14:00:00-01</strong></li><li tabindex="0"><strong>2023-11-13 02:00:00-01</strong></li><li tabindex="0"><strong>2004-05-11 12:00:00-01</strong></li><li tabindex="0"><strong>2004-03-11 12:00:00-01</strong></li><li tabindex="0"><strong>2008-05-01 12:00:00-01</strong></li><li tabindex="0"><strong>2023-11-23 14:00:00-01</strong></li><li tabindex="0"><strong>2021-11-28 03:00:00-01</strong></li><li tabindex="0"><strong>2020-01-08 04:00:00-01</strong></li><li tabindex="0"><strong>2004-12-08 18:00:00-01</strong></li><li tabindex="0"><strong>2004-09-14 15:00:00-01</strong></li><li tabindex="0"><strong>2022-12-29 18:00:00-01</strong></li><li tabindex="0"><strong>2007-11-27 17:00:00-01</strong></li><li tabindex="0"><strong>2023-12-13 02:00:00-01</strong></li><li tabindex="0"><strong>2019-04-02 14:00:00-01</strong></li><li tabindex="0"><strong>2009-04-02 07:00:00-01</strong></li><li tabindex="0"><strong>2007-02-22 08:00:00-01</strong></li><li tabindex="0"><strong>2005-06-12 09:00:00-01</strong></li><li tabindex="0"><strong>2018-10-30 11:00:00-01</strong></li><li tabindex="0"><strong>2020-06-14 13:00:00-01</strong></li><li tabindex="0"><strong>2018-04-10 02:00:00-01</strong></li><li tabindex="0"><strong>2003-12-24 17:00:00-01</strong></li><li tabindex="0"><strong>2017-05-13 14:00:00-01</strong></li><li tabindex="0"><strong>2008-04-16 15:00:00-01</strong></li><li tabindex="0"><strong>2020-12-28 04:00:00-01</strong></li><li tabindex="0"><strong>2005-01-28 04:00:00-01</strong></li><li tabindex="0"><strong>2019-04-12 07:00:00-01</strong></li><li tabindex="0"><strong>2024-05-03 14:00:00-01</strong></li><li tabindex="0"><strong>2019-01-09 01:00:00-01</strong></li><li tabindex="0"><strong>2003-12-25 11:00:00-01</strong></li><li tabindex="0"><strong>2016-10-03 15:00:00-01</strong></li><li tabindex="0"><strong>2008-06-07 13:00:00-01</strong></li><li tabindex="0"><strong>2014-02-27 14:00:00-01</strong></li><li tabindex="0"><strong>2008-06-05 08:00:00-01</strong></li><li tabindex="0"><strong>2015-02-15 05:00:00-01</strong></li><li tabindex="0"><strong>2022-04-01 07:00:00-01</strong></li><li tabindex="0"><strong>2017-10-03 12:00:00-01</strong></li><li tabindex="0"><strong>2024-01-21 23:00:00-01</strong></li><li tabindex="0"><strong>2021-03-21 15:00:00-01</strong></li><li tabindex="0"><strong>2016-04-10 08:00:00-01</strong></li><li tabindex="0"><strong>2022-04-10 14:00:00-01</strong></li><li tabindex="0"><strong>2018-06-10 14:00:00-01</strong></li><li tabindex="0"><strong>2023-12-13 01:00:00-01</strong></li><li tabindex="0"><strong>2018-11-17 04:00:00-01</strong></li><li tabindex="0"><strong>2007-04-28 14:00:00-01</strong></li><li tabindex="0"><strong>2020-06-14 14:00:00-01</strong></li><li tabindex="0"><strong>2012-05-24 05:00:00-01</strong></li><li tabindex="0"><strong>2017-04-28 07:00:00-01</strong></li><li tabindex="0"><strong>2007-04-08 11:00:00-01</strong></li><li tabindex="0"><strong>2009-05-08 09:00:00-01</strong></li><li tabindex="0"><strong>2003-12-25 06:00:00-01</strong></li><li tabindex="0"><strong>2021-03-04 09:00:00-01</strong></li><li tabindex="0"><strong>2006-11-26 16:00:00-01</strong></li><li tabindex="0"><strong>2023-02-21 13:00:00-01</strong></li><li tabindex="0"><strong>2020-12-09 02:00:00-01</strong></li><li tabindex="0"><strong>2023-04-23 09:00:00-01</strong></li><li tabindex="0"><strong>2022-03-28 04:00:00-01</strong></li><li tabindex="0"><strong>2020-05-16 09:00:00-01</strong></li><li tabindex="0"><strong>2022-03-17 05:00:00-01</strong></li><li tabindex="0"><strong>2017-01-03 16:00:00-01</strong></li><li tabindex="0"><strong>2015-10-03 15:00:00-01</strong></li><li tabindex="0"><strong>2016-12-06 13:00:00-01</strong></li><li tabindex="0"><strong>2018-06-11 09:00:00-01</strong></li><li tabindex="0"><strong>2019-01-15 06:00:00-01</strong></li><li tabindex="0"><strong>2021-04-11 06:00:00-01</strong></li><li tabindex="0"><strong>2017-10-02 04:00:00-01</strong></li><li tabindex="0"><strong>2022-11-28 12:00:00-01</strong></li><li tabindex="0"><strong>2024-01-25 07:00:00-01</strong></li><li tabindex="0"><strong>2018-05-30 13:00:00-01</strong></li><li tabindex="0"><strong>2019-04-12 08:00:00-01</strong></li><li tabindex="0"><strong>2006-01-01 10:00:00-01</strong></li><li tabindex="0"><strong>2022-01-26 04:00:00-01</strong></li><li tabindex="0"><strong>2022-12-30 04:00:00-01</strong></li><li tabindex="0"><strong>2003-12-25 10:00:00-01</strong></li><li tabindex="0"><strong>2007-02-12 10:00:00-01</strong></li><li tabindex="0"><strong>2022-04-10 07:00:00-01</strong></li><li tabindex="0"><strong>2021-02-13 15:00:00-01</strong></li><li tabindex="0"><strong>2021-02-13 12:00:00-01</strong></li><li tabindex="0"><strong>2016-10-18 08:00:00-01</strong></li><li tabindex="0"><strong>2016-12-06 06:00:00-01</strong></li><li tabindex="0"><strong>2006-11-09 15:00:00-01</strong></li><li tabindex="0"><strong>2016-04-29 12:00:00-01</strong></li><li tabindex="0"><strong>2022-11-29 15:00:00-01</strong></li><li tabindex="0"><strong>2017-12-13 17:00:00-01</strong></li><li tabindex="0"><strong>2016-12-06 07:00:00-01</strong></li><li tabindex="0"><strong>2007-12-06 03:00:00-01</strong></li><li tabindex="0"><strong>2011-04-29 13:00:00-01</strong></li><li tabindex="0"><strong>2005-03-05 02:00:00-01</strong></li><li tabindex="0"><strong>2018-11-06 12:00:00-01</strong></li><li tabindex="0"><strong>2005-11-09 17:00:00-01</strong></li><li tabindex="0"><strong>2014-09-28 12:00:00-01</strong></li><li tabindex="0"><strong>2009-05-08 06:00:00-01</strong></li><li tabindex="0"><strong>2012-05-24 09:00:00-01</strong></li><li tabindex="0"><strong>2005-02-10 19:00:00-01</strong></li><li tabindex="0"><strong>2020-12-28 02:00:00-01</strong></li><li tabindex="0"><strong>2007-04-26 12:00:00-01</strong></li><li tabindex="0"><strong>2012-05-25 05:00:00-01</strong></li><li tabindex="0"><strong>2019-03-20 16:00:00-01</strong></li><li tabindex="0"><strong>2009-03-10 11:00:00-01</strong></li><li tabindex="0"><strong>2016-04-15 10:00:00-01</strong></li><li tabindex="0"><strong>2021-12-10 18:00:00-01</strong></li><li tabindex="0"><strong>2012-05-23 14:00:00-01</strong></li><li tabindex="0"><strong>2021-03-30 12:00:00-01</strong></li><li tabindex="0"><strong>2016-01-09 18:00:00-01</strong></li><li tabindex="0"><strong>2005-05-16 15:00:00-01</strong></li><li tabindex="0"><strong>2016-11-03 16:00:00-01</strong></li><li tabindex="0"><strong>2016-03-25 06:00:00-01</strong></li><li tabindex="0"><strong>2019-10-01 16:00:00-01</strong></li><li tabindex="0"><strong>2016-09-23 07:00:00-01</strong></li><li tabindex="0"><strong>2009-04-02 05:00:00-01</strong></li><li tabindex="0"><strong>2023-10-12 11:00:00-01</strong></li><li tabindex="0"><strong>2018-04-08 14:00:00-01</strong></li><li tabindex="0"><strong>2006-03-07 02:00:00-01</strong></li><li tabindex="0"><strong>2021-02-17 05:00:00-01</strong></li><li tabindex="0"><strong>2008-05-22 13:00:00-01</strong></li><li tabindex="0"><strong>2023-01-14 16:00:00-01</strong></li><li tabindex="0"><strong>2019-12-07 19:00:00-01</strong></li><li tabindex="0"><strong>2012-05-24 15:00:00-01</strong></li><li tabindex="0"><strong>2019-09-20 11:00:00-01</strong></li><li tabindex="0"><strong>2022-05-02 08:00:00-01</strong></li><li tabindex="0"><strong>2007-02-19 03:00:00-01</strong></li><li tabindex="0"><strong>2005-02-07 12:00:00-01</strong></li><li tabindex="0"><strong>2023-04-24 12:00:00-01</strong></li><li tabindex="0"><strong>2021-02-13 13:00:00-01</strong></li><li tabindex="0"><strong>2005-06-07 14:00:00-01</strong></li><li tabindex="0"><strong>2007-05-05 14:00:00-01</strong></li><li tabindex="0"><strong>2019-01-31 09:00:00-01</strong></li><li tabindex="0"><strong>2006-02-19 04:00:00-01</strong></li><li tabindex="0"><strong>2006-01-14 16:00:00-01</strong></li><li tabindex="0"><strong>2020-05-02 07:00:00-01</strong></li><li tabindex="0"><strong>2008-04-21 13:00:00-01</strong></li><li tabindex="0"><strong>2009-03-10 10:00:00-01</strong></li><li tabindex="0"><strong>2020-11-24 08:00:00-01</strong></li><li tabindex="0"><strong>2004-05-16 12:00:00-01</strong></li><li tabindex="0"><strong>2008-06-05 10:00:00-01</strong></li><li tabindex="0"><strong>2015-04-02 13:00:00-01</strong></li><li tabindex="0"><strong>2004-01-23 02:00:00-01</strong></li><li tabindex="0"><strong>2019-01-15 20:00:00-01</strong></li><li tabindex="0"><strong>2004-05-11 15:00:00-01</strong></li><li tabindex="0"><strong>2022-06-14 14:00:00-01</strong></li><li tabindex="0"><strong>2008-01-15 17:00:00-01</strong></li><li tabindex="0"><strong>2020-05-04 10:00:00-01</strong></li><li tabindex="0"><strong>2022-01-08 05:00:00-01</strong></li><li tabindex="0"><strong>2021-01-27 02:00:00-01</strong></li><li tabindex="0"><strong>2015-10-05 05:00:00-01</strong></li><li tabindex="0"><strong>2008-01-24 14:00:00-01</strong></li><li tabindex="0"><strong>2006-01-01 07:00:00-01</strong></li><li tabindex="0"><strong>2017-03-30 13:00:00-01</strong></li><li tabindex="0"><strong>2020-12-21 17:00:00-01</strong></li><li tabindex="0"><strong>2019-01-15 09:00:00-01</strong></li><li tabindex="0"><strong>2024-11-19 05:00:00-01</strong></li><li tabindex="0"><strong>2009-05-08 07:00:00-01</strong></li><li tabindex="0"><strong>2020-01-21 04:00:00-01</strong></li><li tabindex="0"><strong>2012-05-25 08:00:00-01</strong></li><li tabindex="0"><strong>2007-10-13 07:00:00-01</strong></li><li tabindex="0"><strong>2022-11-26 16:00:00-01</strong></li><li tabindex="0"><strong>2009-05-08 08:00:00-01</strong></li><li tabindex="0"><strong>2017-09-22 15:00:00-01</strong></li><li tabindex="0"><strong>2017-03-27 13:00:00-01</strong></li><li tabindex="0"><strong>2016-06-21 10:00:00-01</strong></li><li tabindex="0"><strong>2018-12-23 16:00:00-01</strong></li><li tabindex="0"><strong>2005-03-05 03:00:00-01</strong></li><li tabindex="0"><strong>2022-08-08 11:00:00-01</strong></li><li tabindex="0"><strong>2015-10-13 03:00:00-01</strong></li><li tabindex="0"><strong>2008-12-24 21:00:00-01</strong></li><li tabindex="0"><strong>2017-09-22 09:00:00-01</strong></li><li tabindex="0"><strong>2011-04-30 09:00:00-01</strong></li><li tabindex="0"><strong>2017-03-30 16:00:00-01</strong></li><li tabindex="0"><strong>2008-05-22 14:00:00-01</strong></li><li tabindex="0"><strong>2015-05-13 14:00:00-01</strong></li><li tabindex="0"><strong>2006-11-25 07:00:00-01</strong></li><li tabindex="0"><strong>2007-10-13 12:00:00-01</strong></li><li tabindex="0"><strong>2016-04-27 14:00:00-01</strong></li><li tabindex="0"><strong>2015-10-04 06:00:00-01</strong></li><li tabindex="0"><strong>2021-03-07 09:00:00-01</strong></li><li tabindex="0"><strong>2022-04-05 08:00:00-01</strong></li><li tabindex="0"><strong>2017-05-26 07:00:00-01</strong></li><li tabindex="0"><strong>2016-04-15 14:00:00-01</strong></li><li tabindex="0"><strong>2008-04-16 09:00:00-01</strong></li><li tabindex="0"><strong>2004-12-31 17:00:00-01</strong></li><li tabindex="0"><strong>2019-10-18 09:00:00-01</strong></li><li tabindex="0"><strong>2023-01-11 03:00:00-01</strong></li><li tabindex="0"><strong>2023-12-22 13:00:00-01</strong></li><li tabindex="0"><strong>2021-10-29 15:00:00-01</strong></li><li tabindex="0"><strong>2018-11-06 13:00:00-01</strong></li><li tabindex="0"><strong>2022-12-30 05:00:00-01</strong></li><li tabindex="0"><strong>2019-11-22 01:00:00-01</strong></li><li tabindex="0"><strong>2016-10-04 10:00:00-01</strong></li><li tabindex="0"><strong>2004-02-14 16:00:00-01</strong></li><li tabindex="0"><strong>2006-02-09 03:00:00-01</strong></li><li tabindex="0"><strong>2023-11-23 16:00:00-01</strong></li><li tabindex="0"><strong>2004-02-22 16:00:00-01</strong></li><li tabindex="0"><strong>2016-01-10 03:00:00-01</strong></li><li tabindex="0"><strong>2005-11-02 03:00:00-01</strong></li><li tabindex="0"><strong>2007-11-29 17:00:00-01</strong></li><li tabindex="0"><strong>2016-04-10 14:00:00-01</strong></li><li tabindex="0"><strong>2018-11-06 10:00:00-01</strong></li><li tabindex="0"><strong>2005-07-20 14:00:00-01</strong></li><li tabindex="0"><strong>2016-11-28 11:00:00-01</strong></li><li tabindex="0"><strong>2022-09-01 14:00:00-01</strong></li><li tabindex="0"><strong>2006-03-27 13:00:00-01</strong></li><li tabindex="0"><strong>2015-05-12 12:00:00-01</strong></li><li tabindex="0"><strong>2016-09-23 11:00:00-01</strong></li><li tabindex="0"><strong>2020-06-16 13:00:00-01</strong></li><li tabindex="0"><strong>2007-05-02 14:00:00-01</strong></li></ul></div>
+    </div>
+    <div id="photoMap" class="leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom" style="position: relative;" tabindex="0"><div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(0px, 0px, 0px);"><div class="leaflet-pane leaflet-tile-pane"><div class="leaflet-layer " style="z-index: 1; opacity: 1;"><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 19; transform: translate3d(0px, 0px, 0px) scale(1);"><img alt="" src="https://tile.openstreetmap.org/9/88/206.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(16px, 14px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/89/206.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(272px, 14px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/88/205.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(16px, -242px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/89/205.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(272px, -242px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/88/207.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(16px, 270px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/89/207.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(272px, 270px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/87/206.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-240px, 14px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/90/206.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(528px, 14px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/87/205.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-240px, -242px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/90/205.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(528px, -242px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/87/207.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-240px, 270px, 0px); opacity: 1;"><img alt="" src="https://tile.openstreetmap.org/9/90/207.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(528px, 270px, 0px); opacity: 1;"></div></div></div><div class="leaflet-pane leaflet-overlay-pane"><svg pointer-events="none" class="leaflet-zoom-animated" width="816" height="358" style="transform: translate3d(-68.23px, -29.7085px, 0px) scale(1);" viewBox="-68 -30 816 358"><g><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#3388ff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#7a4fd6" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M361 255L442 182L421 76L318 43L237 117L259 222z"></path><path class="leaflet-interactive" stroke="#d9822b" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#d9822b" fill-opacity="1" fill-rule="evenodd" d="M328,122a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 "></path></g></svg></div><div class="leaflet-pane leaflet-shadow-pane"></div><div class="leaflet-pane leaflet-marker-pane"></div><div class="leaflet-pane leaflet-tooltip-pane"></div><div class="leaflet-pane leaflet-popup-pane"></div><div class="leaflet-proxy leaflet-zoom-animated" style="transform: translate3d(22851.8px, 52871.1px, 0px) scale(256);"></div></div><div class="leaflet-control-container"><div class="leaflet-top leaflet-left"><div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="#" title="Zoom in" role="button" aria-label="Zoom in" aria-disabled="false"><span aria-hidden="true">+</span></a><a class="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out" aria-disabled="false"><span aria-hidden="true">−</span></a></div></div><div class="leaflet-top leaflet-right"></div><div class="leaflet-bottom leaflet-left"></div><div class="leaflet-bottom leaflet-right"><div class="leaflet-control-attribution leaflet-control"><a href="https://leafletjs.com" title="A JavaScript library for interactive maps"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"></path><path fill="#FFD500" d="M0 4h12v3H0z"></path><path fill="#E0BC00" d="M0 7h12v1H0z"></path></svg> Leaflet</a> <span aria-hidden="true">|</span> © OpenStreetMap contributors</div></div></div></div>
+    <div id="photosOut"><div class="cols"><label><input type="checkbox"> name</label><label><input type="checkbox"> size</label><label><input type="checkbox"> type</label><label><input type="checkbox"> Make</label><label><input type="checkbox"> Model</label><label><input type="checkbox"> Orientation</label><label><input type="checkbox"> XResolution</label><label><input type="checkbox"> YResolution</label><label><input type="checkbox"> ResolutionUnit</label><label><input type="checkbox"> Software</label><label><input type="checkbox"> ModifyDate</label><label><input type="checkbox"> HostComputer</label><label><input type="checkbox"> ExposureTime</label><label><input type="checkbox"> FNumber</label><label><input type="checkbox"> ExposureProgram</label><label><input type="checkbox"> ISO</label><label><input type="checkbox"> ExifVersion</label><label><input type="checkbox"> DateTimeOriginal</label><label><input type="checkbox"> CreateDate</label><label><input type="checkbox"> OffsetTime</label><label><input type="checkbox"> OffsetTimeOriginal</label><label><input type="checkbox"> OffsetTimeDigitized</label><label><input type="checkbox"> ComponentsConfiguration</label><label><input type="checkbox"> ShutterSpeedValue</label><label><input type="checkbox"> ApertureValue</label><label><input type="checkbox"> BrightnessValue</label><label><input type="checkbox"> ExposureCompensation</label><label><input type="checkbox"> MeteringMode</label><label><input type="checkbox"> Flash</label><label><input type="checkbox"> FocalLength</label><label><input type="checkbox"> SubSecTimeOriginal</label><label><input type="checkbox"> SubSecTimeDigitized</label><label><input type="checkbox"> FlashpixVersion</label><label><input type="checkbox"> ColorSpace</label><label><input type="checkbox"> ExifImageWidth</label><label><input type="checkbox"> ExifImageHeight</label><label><input type="checkbox"> SensingMethod</label><label><input type="checkbox"> SceneType</label><label><input type="checkbox"> ExposureMode</label><label><input type="checkbox"> WhiteBalance</label><label><input type="checkbox"> FocalLengthIn35mmFormat</label><label><input type="checkbox"> SceneCaptureType</label><label><input type="checkbox"> LensInfo</label><label><input type="checkbox"> LensMake</label><label><input type="checkbox"> LensModel</label><label><input type="checkbox"> GPSLatitudeRef</label><label><input type="checkbox"> GPSLatitude</label><label><input type="checkbox"> GPSLongitudeRef</label><label><input type="checkbox"> GPSLongitude</label><label><input type="checkbox"> GPSAltitudeRef</label><label><input type="checkbox"> GPSAltitude</label><label><input type="checkbox"> GPSSpeedRef</label><label><input type="checkbox"> GPSSpeed</label><label><input type="checkbox"> GPSImgDirectionRef</label><label><input type="checkbox"> GPSImgDirection</label><label><input type="checkbox"> GPSDestBearingRef</label><label><input type="checkbox"> GPSDestBearing</label><label><input type="checkbox"> GPSHPositioningError</label><label><input type="checkbox"> latitude</label><label><input type="checkbox"> longitude</label></div><div class="scroll"><table><thead><tr><th>name</th><th>Make</th><th>Model</th><th>DateTimeOriginal</th><th>latitude</th><th>longitude</th></tr></thead><tbody><tr><td>8FE173E8-C365-42AF-AE24-59716B8D3BF8_1_105_c.jpeg</td><td>Apple</td><td>iPhone 8</td><td>2022-03-03T17:27:52.000Z</td><td>32.888758333333335</td><td>-117.25122777777777</td></tr></tbody></table></div></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+
+<script type="module">
+import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm";
+
+/* =====================================================================
+   CONFIG — edit this block
+   ===================================================================== */
+const LOAD_SPATIAL = false;   // true to INSTALL/LOAD the spatial extension in the browser
+const spreads = { wind: 20, swell: 20 };  // default half-angles in degrees (adjustable with the sliders)
+const CONE_MAX_ANGLE = 90;    // hard cap: cones never open wider than ±90° from the perpendicular
+const CONE_LENGTH_M = null;   // cone radius in meters; null = same as the drawn line's length
+
+/* ---------------------------------------------------------------------
+   YOUR SQL — one call per drawn line.
+   line = { id, coords: [[lon,lat],...], bearing, wind, swell, midpoint: [lon,lat] }
+     bearing: direction of the line (first → last vertex), degrees clockwise from north
+     wind / swell: the two perpendicular directions (bearing+90, bearing−90), 0–360;
+       swapped when the user presses "Flip wind / swell" (line.flipped === true)
+     midpoint: point halfway along the line (the wind and swell cones' origin)
+     windSpread / swellSpread: each cone's half-angle in degrees from its slider (1–90)
+   Return an array of plain objects (rows). Placeholder below just echoes inputs.
+   --------------------------------------------------------------------- */
+async function runLinesQuery(conn, lines) {
+  // query inputs gonna take each line, add place to prepare statement and input the params for each drawn line...
+  const heading_dir_macro = `
+    CREATE OR REPLACE FUNCTION heading_to_direction(angle) AS
+    ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'][
+        (CAST(round((((angle % 360) + 360) % 360) / 22.5) AS INT) % 16) + 1
+    ]
+  `;
+  const angle_to_cone_macro = `
+    CREATE OR REPLACE TEMPORARY MACRO angle_in_cone(angle, cone_start, cone_end) AS
+    CASE WHEN cone_start <= cone_end THEN angle >= cone_start AND angle <= cone_end
+         ELSE angle >= cone_start OR angle <= cone_end
+    END
+  `
+  const macros = [heading_dir_macro, angle_to_cone_macro]
+  macros.forEach(async (macro)=> {
+    const macro_statement = await conn.prepare(macro)
+    await macro_statement.query()
+
+  })
+  const query = `
+    with
+    query_input (wind_min,wind_max,swell_min,swell_max,lon,lat) as (
+      select *
+      from (values ${lines.map(l=>'(?,?,?,?,?,?),(?,?,?,?,?,?)').join(',')})
+    ),
+    h3_cells_with_params as (
+      select h3_latlng_to_cell(lat,lon,4) as h3_04,
+             wind_min,wind_max,swell_min,swell_max
+      from query_input
+    ),
+    h3_cell_years as (
+      select h3_cells_with_params.h3_04, array_agg(date_trunc('year', swell_tags.timestamp_tz::timestamp)) as yrz
+      from 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell_tags
+      join h3_cells_with_params on h3_cells_with_params.h3_04 = swell_tags.h3_04
+      group by h3_cells_with_params.h3_04
+    ),
+    h3_cell_years_count as (
+      SELECT COUNT(yrz) AS total_rows FROM  h3_cell_years
+    ),
+    unnested_h3_cell_years as (
+      SELECT DISTINCT h3_04, UNNEST(yrz) AS yr
+      FROM h3_cell_years
+    ),
+    shared_yrz as (
+      SELECT yr
+      FROM unnested_h3_cell_years
+      GROUP BY ALL
+      HAVING COUNT(yr) = (SELECT total_rows FROM h3_cell_years_count)
+      ORDER BY yr
+    ),
+    year_sequences as (
+      select yr, case when lag(yr) over () is null or lag(yr) over () != yr - '1 year'::interval then 1 else 0 end as seq_cuts
+      from shared_yrz
+    ),
+    year_windows as (
+      select yr, sum(seq_cuts) over () as group_id
+      from year_sequences
+    ),
+    intersecting_years as (
+      select min(yr) as min_year, max(yr) as max_year
+      from year_windows
+      group by group_id
+    ),
+    accept_tags as (
+      select swell.swell_tag, swell.h3_04, swell.timestamp_tz,
+            case when angle_in_cone(swell.swell_tag[-1], swell_min, swell_max) then 1 else 0 end as good_dir,
+            case when angle_in_cone(swell.swell_tag[4], wind_min, wind_max) then 1 else 0 end as good_wnd,
+            case when good_wnd = 1 and good_dir = 1 then 1 else 0 end as good_swell_dir,
+            swell.swell_tag[2] > median(swell.swell_tag[2]) over (partition by swell.h3_04) as above_avg_swell,
+            swell.swell_tag[3] > median(swell.swell_tag[3]) over (partition by swell.h3_04) as above_avg_period,
+            case when above_avg_swell = 1 and above_avg_swell = above_avg_period  then 1 else 0 end as good_size
+      from h3_cells_with_params
+      join 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell on swell.h3_04=h3_cells_with_params.h3_04
+      join intersecting_years on swell.timestamp_tz between min_year and max_year
+    ),
+    num_days as (
+      select h3_04, count(distinct date_trunc('day', timestamp_tz::timestamp)) as num_days,
+            max(timestamp_tz) as max_year,
+            min(timestamp_tz) as min_year
+      from accept_tags group by h3_04
+    ),
+    good_readings as (
+      select
+            h3_04,
+            date_trunc('day', timestamp_tz::timestamp) as d,
+            round(swell_tag[2]*3.28084,2) as wv_ft,
+            swell_tag[3] as period,
+            swell_tag[-1] as wind_dir_raw,
+            swell_tag[4] as swell_dir_raw,
+            heading_to_direction(swell_tag[4]) as wind_dir,
+            heading_to_direction(swell_tag[-1]) as wve_dir
+            -- wind_max,angle_perp_wind,wind_min
+      from accept_tags
+      where good_swell_dir and good_size
+      order by wv_ft desc, period desc
+    ),
+    good_days as (
+      select h3_04, h3_h3_to_string(h3_04) as h3_04_str,
+            round(count(distinct d)) as good_days,
+            array_agg(distinct monthname(d)) as months,
+            round(avg(period),2) as avg_period,
+            round(avg(wv_ft),2) as avg_size,
+            round(max(period),2) as max_period,
+            round(max(wv_ft),2) as max_size
+
+      from good_readings group by h3_04
+    )
+    select h3_04_str, months, avg_size, avg_period, max_size, max_period,
+          round(good_days/num_days*100,2) as perc_days,
+          good_days, max_year, min_year
+    from good_days
+    join num_days on good_days.h3_04=num_days.h3_04
+    order by avg_size
+    `
+
+  const query_inputs = lines.map(l => l.coords.map(c=>[
+    ((l.wind - l.windSpread) % 360 + 360) % 360,((l.wind + l.windSpread) % 360 + 360) % 360,
+    ((l.swell - l.swellSpread) % 360 + 360) % 360, ((l.swell + l.swellSpread) % 360 + 360) % 360,
+  ].concat(c).flat())).flat().flat()
+  const statement = await conn.prepare(query)
+
+  let statement_print = query
+  for (let i in query_inputs)
+    statement_print = statement_print.replace('?', query_inputs[i])
+
+  console.log(heading_dir_macro + ';' + angle_to_cone_macro + ';' + statement_print)
+
+  const res = await statement.query(...query_inputs)
+  await statement.close();
+  return toRows(res);
+}
+
+/* ---------------------------------------------------------------------
+   YOUR SQL — one call for the whole photo batch.
+   photos = [{ name, size, type, latitude, longitude, DateTimeOriginal, Make, Model, ...exif }]
+   --------------------------------------------------------------------- */
+async function runPhotoQuery(conn, photos) {
+  const stmt = await conn.prepare(`
+    WITH
+    photos as (
+      SELECT
+        j->>'$.name' AS name,
+        (j->>'$.DateTimeOriginal')::varchar::timestamptz as timestamp_tz,
+        date_trunc('hour', timestamp_tz + INTERVAL 30 MINUTE) as timestamp_tz_hr,
+        ((j->>'$.GPSLatitude[0]')::DOUBLE + ((j->>'$.GPSLatitude[1]')::DOUBLE / 60.0) + ((j->>'$.GPSLatitude[2]')::DOUBLE / 3600.0)) as latitude_raw,
+        (j->>'$.GPSLongitude[0]')::DOUBLE + ((j->>'$.GPSLongitude[1]')::DOUBLE / 60.0) + ((j->>'$.GPSLongitude[2]')::DOUBLE / 3600.0) as longitude_raw,
+        h3_latlng_to_cell(
+          (case when j->>'$.GPSLatitudeRef' = 'N' then latitude_raw else latitude_raw * -1 end),
+          (case when j->>'$.GPSLongitudeRef' = 'E' then longitude_raw else longitude_raw * -1 end),
+          4
+        ) as h3_04
+      FROM (SELECT unnest(from_json(?::JSON, '["JSON"]')) AS j)
+    ),
+    tags as (
+      select *
+      from 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell
+      join photos on swell.h3_04=photos.h3_04 and swell.timestamp_tz = photos.timestamp_tz_hr
+    ),
+    similar_tags as (
+      select
+        name,
+        ST_AsGeoJSON(ST_GeomFromText(h3_cell_to_boundary_wkt(tags.h3_04))) as h3_polygon,
+        tags.timestamp_tz::varchar as photo_timestamp, tags.swell_tag as tags_swell_tag,
+        swell.timestamp_tz::varchar as matched_photo_timestamp, swell.swell_tag as swell_tag,
+        round(array_distance(tags.swell_tag[2:]::double[6], swell.swell_tag[2:]::double[6]),2) as dist
+      from tags
+      join 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell
+      on swell.h3_04=tags.h3_04 and array_distance(tags.swell_tag[2:]::double[6], swell.swell_tag[2:]::double[6]) < 5
+    )
+    select name, h3_polygon, photo_timestamp, matched_photo_timestamp, tags_swell_tag, swell_tag from similar_tags
+    order by dist asc
+  `);
+        //  + ((j->>'$.latitude'[1])::DOUBLE / 60.0 )+ ((j->>'$.latitude'[2])::DOUBLE / 3600) as latitude
+        // (j->>'$.longitude'[0])::DOUBLE + ((j->>'$.longitude'[1])::DOUBLE / 60.0 )+ ((j->>'$.longitude'[2])::DOUBLE / 3600) as longitude
+  const res = await stmt.query(JSON.stringify(photos));
+  await stmt.close();
+  return toRows(res);
+}
+/* ===================================================================== */
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+const setStatus = (t, err) => { statusEl.textContent = t; statusEl.classList.toggle("err", !!err); };
+
+// Arrow table → plain JSON rows (BigInt → Number, Date/other → string)
+function toRows(res) {
+  const clean = v => typeof v === "bigint" ? Number(v)
+    : v instanceof Date ? v.toISOString()
+    : (v && typeof v.toArray === "function") ? Array.from(v.toArray(), x => typeof x === "bigint" ? Number(x) : x)
+    : (v && typeof v === "object" && !Array.isArray(v)) ? JSON.stringify(v, (_, x) => typeof x === "bigint" ? Number(x) : x)
+    : v;
+  const tsCols = new Set(res.schema.fields.filter(f => /^(Timestamp|Date)/.test(String(f.type))).map(f => f.name));
+  const toDate = v => { const n = Number(v); return Number.isFinite(n) ? new Date(n > 1e14 ? n / 1000 : n).toISOString() : v; };
+  return res.toArray().map(r => Object.fromEntries(Object.entries(r.toJSON()).map(([k, v]) => [k, tsCols.has(k) && v != null ? toDate(v) : clean(v)])));
+}
+
+/* ---------- table renderer with column picker + sortable headers ---------- */
+function renderTable(el, rows, defaultCols, opts = {}) {
+  el.innerHTML = "";
+  if (!rows.length) { el.innerHTML = '<p class="muted">No rows returned.</p>'; return; }
+  const all = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  let shown = new Set(defaultCols?.length ? defaultCols.filter(c => all.includes(c)) : all);
+  let sort = { col: null, dir: 1 };
+
+  const picker = document.createElement("div"); picker.className = "cols";
+  const wrap = document.createElement("div"); wrap.className = "scroll";
+  el.append(picker, wrap);
+
+  all.forEach(c => {
+    const l = document.createElement("label");
+    const cb = Object.assign(document.createElement("input"), { type: "checkbox", checked: shown.has(c) });
+    cb.onchange = () => { cb.checked ? shown.add(c) : shown.delete(c); draw(); };
+    l.append(cb, " " + c); picker.append(l);
+  });
+
+  function draw() {
+    const cols = all.filter(c => shown.has(c));
+    let data = rows.slice();
+    if (sort.col) data.sort((a, b) => (a[sort.col] > b[sort.col] ? 1 : a[sort.col] < b[sort.col] ? -1 : 0) * sort.dir);
+    const t = document.createElement("table");
+    const hr = t.createTHead().insertRow();
+    cols.forEach(c => {
+      const th = document.createElement("th");
+      th.textContent = c + (sort.col === c ? (sort.dir > 0 ? " ▲" : " ▼") : "");
+      th.onclick = () => { sort = { col: c, dir: sort.col === c ? -sort.dir : 1 }; draw(); };
+      hr.append(th);
+    });
+    const tb = t.createTBody();
+    data.forEach(r => {
+      const tr = tb.insertRow();
+      cols.forEach(c => tr.insertCell().textContent = Array.isArray(r[c]) ? JSON.stringify(r[c]) : (r[c] ?? ""));
+      if (opts.onHover) { tr.onmouseenter = tr.onclick = () => opts.onHover(r); }
+    });
+    wrap.replaceChildren(t);
+  }
+  draw();
+}
+
+/* ---------- swell tag comparison (hover a photo result row) ---------- */
+// Position of each value inside a swell tag array. Index 0 is the H3 cell and is ignored.
+const SWELL_IDX = { height: 1, period: 2, swellDir: 3, tide: 4, windSpeed: 5, windDir: 6 };
+const SWELL_COLORS = { swell: "#2b7bd9", wind: "#d9822b" };
+const DIRECTIONS_ARE_FROM = false;  // tag directions say where it comes FROM, so arrows are drawn 180° opposite (false = draw toward the angle)
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtNum = v => Number.isFinite(v) ? String(+v.toFixed(2)) : "–";
+
+function compassSVG(tag) {
+  // angles are degrees clockwise from north; arrows show the direction of travel
+  const arrow = (deg, color) => Number.isFinite(deg)
+    ? `<g transform="rotate(${(deg + (DIRECTIONS_ARE_FROM ? 180 : 0)) % 360} 80 80)"><line x1="80" y1="80" x2="80" y2="34" stroke="${color}" stroke-width="3"/></g>` : "";
+  const labels = [["N", 80, 12], ["E", 150, 84], ["S", 80, 156], ["W", 10, 84]]
+    .map(([t, x, y]) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="11" style="fill:var(--mute)">${t}</text>`).join("");
+  return `<svg viewBox="0 0 160 160" width="160" height="160">
+    <circle cx="80" cy="80" r="62" fill="none" stroke-width="1.5" style="stroke:var(--line)"/>${labels}
+    ${arrow(tag[SWELL_IDX.swellDir], SWELL_COLORS.swell)}${arrow(tag[SWELL_IDX.windDir], SWELL_COLORS.wind)}
+    <circle cx="80" cy="80" r="3" style="fill:var(--ink)"/></svg>`;
+}
+
+const MATCH_LABEL_COL = "matched_photo_timestamp";  // query column shown in the result list
+const pad2 = n => String(n).padStart(2, "0");
+const fmtLocal = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+const fmtMatched = v => v == null ? `(no ${MATCH_LABEL_COL})` : /^\d{4}-\d\d-\d\dT/.test(String(v)) ? String(v).slice(0, 19).replace("T", " ") : String(v);
+const photoFor = row => photos.find(p => p.name === row.name) ?? (photos.length === 1 ? photos[0] : null);
+
+function photoInfoHTML(p) {
+  if (!p) return "";
+  const t = [p.DateTimeOriginal, p.CreateDate, p.DateTime].find(x => x instanceof Date && !isNaN(x));
+  const gps = Number.isFinite(p.latitude) && Number.isFinite(p.longitude) ? `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}` : "no GPS in EXIF";
+  return `<div class="muted" style="margin-bottom:.6rem;font-size:.85rem"><strong style="color:var(--ink)">${esc(p.name)}</strong><br>${t ? fmtLocal(t) : "time not in EXIF"}<br>${gps}</div>`;
+}
+
+const photoUrls = new Map();   // file name -> object URL for the preview image
+let resultRows = [], curPhoto = 0;
+const rowsFor = p => photos.length === 1 ? resultRows : resultRows.filter(r => r.name === p.name);
+
+function renderResults(rows) {
+  resultRows = rows;
+  $("photoNav").hidden = $("matchPanel").hidden = false;
+  drawCells(rows);
+  selectPhoto(0);
+}
+
+function renderNav() {
+  const nav = $("photoNav");
+  const step = (txt, d) => {
+    const b = document.createElement("button"); b.className = "step"; b.textContent = txt;
+    b.disabled = curPhoto + d < 0 || curPhoto + d >= photos.length;
+    b.onclick = () => selectPhoto(curPhoto + d); return b;
+  };
+  const chips = document.createElement("div"); chips.className = "chips";
+  photos.forEach((p, i) => {
+    const c = document.createElement("button"); c.className = "chip"; c.setAttribute("aria-selected", i === curPhoto);
+    const url = photoUrls.get(p.name);
+    if (url) { const im = document.createElement("img"); im.src = url; im.alt = ""; im.onerror = () => im.remove(); c.append(im); }
+    const s = document.createElement("span"); s.textContent = `${p.name} (${rowsFor(p).length})`; c.append(s);
+    c.onclick = () => selectPhoto(i);
+    chips.append(c);
+  });
+  const count = document.createElement("span"); count.className = "muted"; count.textContent = `${curPhoto + 1} / ${photos.length}`;
+  nav.replaceChildren(step("◀", -1), chips, step("▶", 1), count);
+  chips.children[curPhoto]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function selectPhoto(i) {
+  if (i < 0 || i >= photos.length) return;
+  curPhoto = i;
+  const p = photos[i], url = photoUrls.get(p.name), img = $("photoThumb");
+  renderNav();
+  img.hidden = !url; img.onerror = () => { img.hidden = true; };
+  if (url) img.src = url;
+  $("photoInfo").innerHTML = photoInfoHTML(p);
+  photoMap.setView([
+    p.GPSLatitude[0] + p.GPSLatitude[1] / 60 + p.GPSLatitude[2] / 3600,
+    p.GPSLongitude[0] + p.GPSLongitude[1] / 60 + p.GPSLongitude[2] / 3600
+  ], 20)
+  if (hiLayer) hiLayer.clearLayers();
+  renderMatchList($("matchList"), rowsFor(p));
+}
+
+function renderMatchList(el, rows) {
+  el.innerHTML = rows.length ? "" : '<p class="muted">No matches for this photo.</p>';
+  $("swellCompare").innerHTML = rows.length ? '<p class="muted">Hover a match to compare.</p>' : "";
+  if (!rows.length) return;
+  const ul = document.createElement("ul"); ul.className = "matchList";
+  let first;
+  rows.forEach(r => {
+    const li = document.createElement("li"); li.tabIndex = 0;
+    li.innerHTML = `<strong>${esc(fmtMatched(r[MATCH_LABEL_COL]))}</strong>`;
+    const pick = () => {
+      ul.querySelector(".active")?.classList.remove("active"); li.classList.add("active");
+      showSwellCompare(r); showCells(r, photos[curPhoto]);
+    };
+    li.onmouseenter = li.onclick = li.onfocus = pick;
+    first ??= pick;
+    ul.append(li);
+  });
+  el.append(ul);
+  first();
+}
+
+// left / right arrow keys step through photos while the Photos tab is open
+document.addEventListener("keydown", e => {
+  if ($("photoTab").hidden || $("photoNav").hidden || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if (e.key === "ArrowLeft") selectPhoto(curPhoto - 1);
+  if (e.key === "ArrowRight") selectPhoto(curPhoto + 1);
+});
+
+function showSwellCompare(row, photo) {
+  const el = $("swellCompare");
+  // any array column long enough to hold a swell tag; first two are compared
+  const cols = Object.keys(row).filter(k => Array.isArray(row[k]) && row[k].length > SWELL_IDX.windDir).slice(0, 2);
+  if (!cols.length) { el.innerHTML = ""; return; }
+  const dot = c => `<span class="sw" style="background:${c}"></span>`;
+  const fields = [["Wave height (ft)", "height"], ["Swell period (s)", "period"], ["Tide (m)", "tide"], ["Wind speed (m/s)", "windSpeed"],
+                  ["Swell direction °", "swellDir", true], ["Wind direction °", "windDir", true]];
+  const body = fields.map(([label, key, isAngle]) => {
+    const vals = cols.map(c => row[c][SWELL_IDX[key]]);
+    let delta = "";
+    if (vals.length === 2 && Number.isFinite(vals[0]) && Number.isFinite(vals[1])) {
+      const d = isAngle ? ((vals[1] - vals[0] + 540) % 360) - 180 : vals[1] - vals[0];
+      delta = (d > 0 ? "+" : "") + fmtNum(d);
+    }
+    return `<tr><td>${label}</td>${vals.map(v => `<td>${fmtNum(v)}</td>`).join("")}${cols.length === 2 ? `<td>${delta}</td>` : ""}</tr>`;
+  }).join("");
+  el.innerHTML = `
+    <div class="cmp">
+      ${cols.map(c => `<figure>${compassSVG(row[c])}<figcaption>${esc(c)}</figcaption></figure>`).join("")}
+      <div>${row.name != null ? `<strong>${esc(row.name)}</strong><br>` : ""}
+        ${dot(SWELL_COLORS.swell)}swell direction<br>${dot(SWELL_COLORS.wind)}wind direction</div>
+    </div>
+    <table><thead><tr><th></th>${cols.map(c => `<th>${esc(c)}</th>`).join("")}${cols.length === 2 ? "<th>Δ (2nd − 1st)</th>" : ""}</tr></thead>
+    <tbody>${body}</tbody></table>`;
+}
+
+/* ---------- matched H3 cell polygons (any GeoJSON Polygon/MultiPolygon column) ---------- */
+const CELL_COLORS = ["#7a4fd6", "#1f9d6b"];
+function parseGeom(v) {
+  try {
+    const g = typeof v === "string" ? JSON.parse(v) : v;
+    const geo = g && g.type === "Feature" ? g.geometry : g;
+    return geo && /Polygon$/.test(geo.type) && geo.coordinates ? geo : null;
+  } catch { return null; }
+}
+const geomCols = row => Object.keys(row).filter(k => parseGeom(row[k]));
+
+let photoMap, cellLayer, hiLayer;
+function drawCells(rows) {
+  const el = $("photoMap");
+  const withGeom = rows.map(r => ({ r, cols: geomCols(r) })).filter(x => x.cols.length);
+  el.hidden = !withGeom.length;
+  if (!withGeom.length) return;
+  if (!photoMap) {
+    photoMap = L.map(el).setView([21.3, -157.85], 9);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(photoMap);
+    cellLayer = L.featureGroup().addTo(photoMap);
+    hiLayer = L.featureGroup().addTo(photoMap);
+  }
+  photoMap.invalidateSize();
+  cellLayer.clearLayers(); hiLayer.clearLayers();
+  withGeom.forEach(({ r, cols }) => cols.forEach(c =>
+    L.geoJSON(parseGeom(r[c]), { style: {  weight: 3, opacity: 0.8, fill: false } }).addTo(cellLayer)));
+  photoMap.fitBounds(cellLayer.getBounds(), { maxZoom: 12, padding: [20, 20] });
+}
+function showCells(row, photo) {
+  if (!photoMap || $("photoMap").hidden) return;
+  hiLayer.clearLayers();
+  geomCols(row).forEach((c, i) =>
+    L.geoJSON(parseGeom(row[c]), { style: { color: CELL_COLORS[i % CELL_COLORS.length], weight: 3, opacity: 0.8, fill: false } }).bindTooltip(c).addTo(hiLayer));
+  const lat = photo?.latitude ?? row.latitude ?? row.lat, lon = photo?.longitude ?? row.longitude ?? row.lon;
+  if (Number.isFinite(lat) && Number.isFinite(lon))
+    L.circleMarker([lat, lon], { radius: 6, color: "#d9822b", fillOpacity: 1 }).bindTooltip(String(row.name ?? "photo")).addTo(hiLayer);
+  // only move the map if the highlighted cell isn't already fully in view
+  if (hiLayer.getLayers().length && !photoMap.getBounds().contains(hiLayer.getBounds()))
+    photoMap.fitBounds(hiLayer.getBounds(), { maxZoom: 12, padding: [30, 30], animate: false });
+}
+
+/* ---------- DuckDB init ---------- */
+let conn = null, db = null;
+(async () => {
+  try {
+    const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+    const workerUrl = URL.createObjectURL(new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }));
+    db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), new Worker(workerUrl));
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    URL.revokeObjectURL(workerUrl);
+    conn = await db.connect();
+    await conn.query(`
+      LOAD icu;
+      INSTALL httpfs; load httpfs;
+      INSTALL spatial; LOAD spatial;
+      INSTALL h3 from community; load h3;
+      INSTALL vss; load vss;
+    `);
+    updateButtons();
+  } catch (e) {
+    console.error(e); setStatus("DuckDB failed: " + e.message, true);
+  }
+})();
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("main section").forEach(s => s.hidden = s.id !== b.dataset.tab);
+  if (b.dataset.tab === "mapTab") map.invalidateSize();
+  if (b.dataset.tab === "photoTab" && photoMap) photoMap.invalidateSize();
+});
+
+/* ---------- map + line drawing ---------- */
+const map = L.map("map").setView([21.3, -157.85], 10);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
+const drawn = new L.FeatureGroup().addTo(map);
+map.addControl(new L.Control.Draw({
+  edit: { featureGroup: drawn },
+  draw: { polyline: { shapeOptions: { color: "#0b6e6e", weight: 4 } }, polygon: false, rectangle: false, circle: false, marker: false, circlemarker: false }
+}));
+map.on(L.Draw.Event.CREATED, e => { drawn.addLayer(e.layer); refreshLines(); });
+map.on(L.Draw.Event.EDITED, refreshLines);
+map.on(L.Draw.Event.DELETED, refreshLines);
+
+function bearing([lon1, lat1], [lon2, lat2]) {
+  const r = Math.PI / 180, dl = (lon2 - lon1) * r;
+  const y = Math.sin(dl) * Math.cos(lat2 * r);
+  const x = Math.cos(lat1 * r) * Math.sin(lat2 * r) - Math.sin(lat1 * r) * Math.cos(lat2 * r) * Math.cos(dl);
+  return (Math.atan2(y, x) / r + 360) % 360;
+}
+// point at half the total length along the line
+function midpointOf(coords) {
+  const seg = [];
+  let total = 0;
+  for (let i = 1; i < coords.length; i++) {
+    const d = map.distance([coords[i-1][1], coords[i-1][0]], [coords[i][1], coords[i][0]]);
+    seg.push(d); total += d;
+  }
+  let half = total / 2;
+  for (let i = 0; i < seg.length; i++) {
+    if (half <= seg[i] || i === seg.length - 1) {
+      const t = seg[i] ? half / seg[i] : 0;
+      return { pt: [coords[i][0] + (coords[i+1][0] - coords[i][0]) * t, coords[i][1] + (coords[i+1][1] - coords[i][1]) * t], total };
+    }
+    half -= seg[i];
+  }
+}
+// destination point from [lon,lat], bearing in degrees, distance in meters
+function destination([lon, lat], brg, dist) {
+  const r = Math.PI / 180, R = 6371008.8, d = dist / R, b = brg * r, φ1 = lat * r, λ1 = lon * r;
+  const φ2 = Math.asin(Math.sin(φ1) * Math.cos(d) + Math.cos(φ1) * Math.sin(d) * Math.cos(b));
+  const λ2 = λ1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(φ1), Math.cos(d) - Math.sin(φ1) * Math.sin(φ2));
+  return [λ2 / r, φ2 / r];
+}
+const cones = new L.FeatureGroup().addTo(map);
+function drawCone(line) {
+  const len = CONE_LENGTH_M ?? line.length;
+  [["wind", "#d9822b"], ["swell", "#2b7bd9"]].forEach(([key, color]) => {
+    const half = Math.min(spreads[key], CONE_MAX_ANGLE);
+    const n = Math.max(2, Math.ceil(2 * half / 2.5));
+    const ring = [line.midpoint];
+    for (let i = 0; i <= n; i++) ring.push(destination(line.midpoint, (line[key] - half + 2 * half * i / n + 360) % 360, len));
+    ring.push(line.midpoint);
+    L.polygon(ring.map(([lo, la]) => [la, lo]), { color, weight: 2, fillOpacity: 0.2 })
+      .bindTooltip(`Line ${line.id} ${key} ${line[key].toFixed(1)}° ±${half}°`).addTo(cones);
+  });
+}
+
+let lines = [];
+function refreshLines() {
+  cones.clearLayers();
+  lines = drawn.getLayers().map((layer, i) => {
+    const coords = layer.getLatLngs().map(p => [p.lng, p.lat]);
+    const b = bearing(coords[0], coords[coords.length - 1]);
+    const { pt, total } = midpointOf(coords);
+    const flipped = !!layer.flipped;
+    const [wind, swell] = flipped ? [(b + 270) % 360, (b + 90) % 360] : [(b + 90) % 360, (b + 270) % 360];
+    return { id: i + 1, coords, bearing: b, flipped, wind, swell, windSpread: Math.min(spreads.wind, CONE_MAX_ANGLE), swellSpread: Math.min(spreads.swell, CONE_MAX_ANGLE), midpoint: pt, length: total };
+  });
+  lines.forEach(drawCone);
+  $("lineInfo").textContent = lines.length
+    ? `${lines.length} line(s) drawn`
+    : "Draw one or more lines with the line tool (top left of the map).";
+  const list = $("lineList");
+  list.replaceChildren(...lines.map((l, i) => {
+    const row = document.createElement("div"); row.className = "lineRow";
+    const dot = c => `<span class="sw" style="background:${c}"></span>`;
+    row.innerHTML = `<strong>Line ${l.id}</strong>
+      <span>${dot("#d9822b")}wind ${l.wind.toFixed(1)}°</span>
+      <span>${dot("#2b7bd9")}swell ${l.swell.toFixed(1)}°</span>`;
+    const btn = document.createElement("button");
+    btn.textContent = "Flip wind / swell";
+    btn.onclick = () => { const layer = drawn.getLayers()[i]; layer.flipped = !layer.flipped; refreshLines(); };
+    row.append(btn);
+    return row;
+  }));
+  updateButtons();
+}
+
+["wind", "swell"].forEach(key => {
+  $(key + "Spread").oninput = e => {
+    spreads[key] = Math.min(+e.target.value, CONE_MAX_ANGLE);
+    $(key + "Val").textContent = spreads[key];
+    refreshLines();
+  };
+});
+
+$("runLines").onclick = async () => {
+  const btn = $("runLines"); btn.disabled = true; setStatus("Running…");
+  try {
+    const rows = await runLinesQuery(conn,lines)
+    renderTable($("linesOut"), rows);
+    setStatus(`${lines.length} line(s)`);
+  } catch (e) { console.error(e); setStatus("Query failed: " + e.message, true); }
+  updateButtons();
+};
+
+/* ---------- photos + EXIF ---------- */
+let photos = [];
+$("files").onchange = async e => {
+  setStatus("Reading EXIF…");
+  photos = [];
+  photoUrls.forEach(u => URL.revokeObjectURL(u)); photoUrls.clear();
+  $("photoNav").hidden = $("matchPanel").hidden = $("photoMap").hidden = true;
+  for (const f of e.target.files) {
+    photoUrls.set(f.name, URL.createObjectURL(f));
+    let exif = {};
+    try { exif = (await exifr.parse(f, { gps: true, xmp: false, icc: false })) || {}; } catch {}
+    photos.push({ name: f.name, size: f.size, type: f.type, ...exif });
+  }
+  renderTable($("photosOut"), photos.map(p => JSON.parse(JSON.stringify(p))), ["name", "latitude", "longitude", "DateTimeOriginal", "Make", "Model"]);
+  setStatus(`${photos.length} photo(s) read`);
+  updateButtons();
+};
+
+$("runPhotos").onclick = async () => {
+  const btn = $("runPhotos"); btn.disabled = true; setStatus("Running…");
+  try {
+    const rows = await runPhotoQuery(conn, JSON.parse(JSON.stringify(photos)));
+    $("swellCompare").innerHTML = "";
+    renderResults(rows);
+    setStatus(`${rows.length} rows returned`);
+  } catch (err) { console.error(err); setStatus("Query failed: " + err.message, true); }
+  updateButtons();
+};
+
+function updateButtons() {
+  $("runLines").disabled = !(conn && lines.length);
+  $("runPhotos").disabled = !(conn && photos.length);
+}
+</script>
+
+
+</body></html>

@@ -35,7 +35,7 @@ SELECT
     archive_url[-8:-6] AS uh_id,
     archive_url[-5] AS version,
     archive_url,
-    's3://swell-tags/bronze/ushlc/' || string_split(archive_url,'/')[-1] as s3_url
+    's3://swell-tags-us-east-1/bronze/ushlc/' || string_split(archive_url,'/')[-1] as s3_url
 FROM urls
 WHERE href != '../'
 """

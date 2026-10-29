@@ -1,0 +1,3 @@
+2026-08-30 17:07:46,889 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/swell_tags.db'} (connection.py:513)
+2026-08-30 17:07:46,954 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'s3://swell-tags-data/swell_tags.db'} (connection.py:513)
+2026-08-30 17:07:47,245 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/sqlmesh_state.db'} (connection.py:513)

@@ -15,5 +15,8 @@
   "dependencies": {
     "@duckdb/node-api": "^1.5.5-r.1",
     "exifreader": "^4.41.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.152.0"
   }
 }

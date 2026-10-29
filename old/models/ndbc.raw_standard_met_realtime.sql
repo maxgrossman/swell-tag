@@ -14,25 +14,26 @@ MODEL(
 
 SET threads=4; SET force_download=true;
 
-SET VARIABLE realtime_urls = (
-    SELECT list(realtime_url) FROM (
-        select realtime_url from ndbc_duck.archive_realtime
-        where start_time <= @end_dt and 
-               end_time >= @start_dt
-    )
-);
+SET VARIABLE realtime_urls = (select []::varchar);
+-- (
+--     SELECT list(realtime_url) FROM (
+--         select realtime_url from ndbc_duck.archive_realtime
+--         where start_time <= @end_dt and
+--                end_time >= @start_dt
+--     )
+-- );
 
-WITH parsed_lines AS 
-    (SELECT str_split(filename,'realtime2/')[2][:5] AS station_id, 
+WITH parsed_lines AS
+    (SELECT str_split(filename,'realtime2/')[2][:5] AS station_id,
             str_split(regexp_replace(column0,'\s+',',', 'g'),',') AS line
     FROM read_csv(getvariable('realtime_urls'),comment='#',header=false,skip=1)),
 -- go get the max timestamp we have from the historical archive.
-max_station_lines AS 
+max_station_lines AS
     (SELECT station_id, max(timestamp_tz) AS max_timestamp_tz
     FROM ndbc_duck.raw_measurements
     GROUP BY station_id),
-table_lines AS 
-    (SELECT station_id, 
+table_lines AS
+    (SELECT station_id,
             MAKE_TIMESTAMPTZ(
                 line[1]::bigint,
                 line[2]::bigint,
@@ -40,12 +41,12 @@ table_lines AS
                 line[4]::bigint,
                 line[5]::bigint,
                 -- invalid guys in here in some files.
-                case when line[5]::bigint >= 60 
-                    then 0 
+                case when line[5]::bigint >= 60
+                    then 0
                     else line[5]::bigint end,
                 0.0,
                 'UTC'
-            ) as timestamp_tz, 
+            ) as timestamp_tz,
             line
     FROM parsed_lines)
 --  only keep lines from realtime that are newer than the last archived date since they can intersect.

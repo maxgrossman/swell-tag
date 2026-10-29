@@ -13,7 +13,7 @@ create table if not exists ushlc.station_measurements (
     h3_04 uint64
 );
 
-WITH
+with
 hrly as (
     select station_id, timestamp_tz, reading_mm
     from read_parquet('s3://swell-tags-us-east-1/bronze/raw/ushlc/**/*.parquet', hive_partitioning = true)
@@ -31,6 +31,3 @@ hrly_and_stations as (
 )
 INSERT INTO ushlc.station_measurements
 SELECT * FROM hrly_and_stations
-ANTI JOIN ushlc.station_measurements
-ON hrly_and_stations.station_id = ushlc.station_measurements.station_id AND
-   hrly_and_stations.timestamp_tz = ushlc.station_measurements.timestamp_tz

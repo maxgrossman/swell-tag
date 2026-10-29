@@ -4,6 +4,7 @@ scratch/*
 node_modules
 __pycache__
 logs/*
+old/logs/*
 data/*.csv
 data/*.parquet
 data/*json
@@ -18,3 +19,5 @@ ndbc.db*
 layers/python/*
 layers/sqlmesh/*
 .terraform
+.env
+.wrangler/

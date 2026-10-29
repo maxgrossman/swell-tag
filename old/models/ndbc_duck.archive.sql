@@ -4,13 +4,13 @@ MODEL(
     columns (
         timestamp_tz timestamptz,
         station_id varchar,
-        archive_url varchar
+        archive_url varchar,
+        s3_url varchar
     )
 
 );
 
-SET extension_directory = '/var/task';
 LOAD aws;
 LOAD httpfs;
 
-SELECT * FROM 's3://swell-tags-us-east-1/bronze/ndbc_archive.csv'
+SELECT timestamp_tz, station_id, archive_url, s3_url FROM 's3://swell-tags-us-east-1/bronze/ndbc_archive.csv'

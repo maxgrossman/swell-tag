@@ -1,0 +1,266 @@
+2026-09-02 20:30:09,533 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/swell_tags.db'} (connection.py:513)
+2026-09-02 20:30:09,546 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'s3://swell-tags-data/swell_tags.db'} (connection.py:513)
+2026-09-02 20:30:09,572 - MainThread - sqlmesh.core.console - WARNING - 'LOAD spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,571 - MainThread - sqlmesh.core.console - WARNING - 'LOAD spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,571 - MainThread - sqlmesh.core.console - WARNING - 'load spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,573 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,573 - MainThread - sqlmesh.core.console - WARNING - 'load h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,571 - MainThread - sqlmesh.core.console - WARNING - 'load h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,571 - MainThread - sqlmesh.core.console - WARNING - 'load h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,575 - MainThread - sqlmesh.core.console - WARNING - 'load webbed' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,572 - MainThread - sqlmesh.core.console - WARNING - 'LOAD webbed' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,576 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,573 - MainThread - sqlmesh.core.console - WARNING - 'LOAD h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,581 - MainThread - sqlmesh.core.console - WARNING - 'load spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,582 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,582 - MainThread - sqlmesh.core.console - WARNING - 'LOAD crawler' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,583 - MainThread - sqlmesh.core.console - WARNING - 'load spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,583 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,583 - MainThread - sqlmesh.core.console - WARNING - 'LOAD h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,584 - MainThread - sqlmesh.core.console - WARNING - 'LOAD spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,583 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,585 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,583 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,585 - MainThread - sqlmesh.core.console - WARNING - 'LOAD webbed' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,585 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,586 - MainThread - sqlmesh.core.console - WARNING - 'LOAD h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,587 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,589 - MainThread - sqlmesh.core.console - WARNING - 'LOAD crawler' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,589 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,590 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,591 - MainThread - sqlmesh.core.console - WARNING - 'load spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,592 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,616 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,616 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,617 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,617 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,617 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,617 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,618 - MainThread - sqlmesh.core.console - WARNING - 'LOAD spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,618 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,619 - MainThread - sqlmesh.core.console - WARNING - 'LOAD h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,619 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,620 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,620 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,621 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,621 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,621 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,623 - MainThread - sqlmesh.core.console - WARNING - 'LOAD spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,623 - MainThread - sqlmesh.core.console - WARNING - 'LOAD httpfs' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,623 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,623 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,624 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,624 - MainThread - sqlmesh.core.console - WARNING - 'LOAD spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,625 - MainThread - sqlmesh.core.console - WARNING - 'LOAD h3' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,624 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,625 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,625 - MainThread - sqlmesh.core.console - WARNING - 'LOAD webbed' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,625 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,626 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,626 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,627 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,627 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,627 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,627 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,628 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,629 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,629 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,629 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,629 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,629 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,623 - MainThread - sqlmesh.core.console - WARNING - 'load a5' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,629 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,626 - MainThread - sqlmesh.core.console - WARNING - 'LOAD crawler' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,630 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,630 - MainThread - sqlmesh.core.console - WARNING - 'load spatial' could not be semantically understood as it contains unsupported syntax, SQLMesh will treat the command as is. Note that any references to the model's underlying physical table can't be resolved in this case, consider using Jinja as explained here https://sqlmesh.readthedocs.io/en/stable/concepts/macros/macro_variables/#audit-only-variables (console.py:2335)
+2026-09-02 20:30:09,630 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,630 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,631 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,631 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,632 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,632 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,632 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,632 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,632 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,633 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,633 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,633 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,635 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,635 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,636 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,636 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,637 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,637 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,638 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,638 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,638 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,638 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,638 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,639 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,639 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,639 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,639 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,640 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,639 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,640 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,640 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,640 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,640 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,640 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,641 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,641 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,641 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,641 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,642 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,643 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,644 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,644 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,644 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,644 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,644 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,644 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,645 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,645 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,645 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,646 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,646 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,646 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,646 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,647 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,647 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,647 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,647 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,648 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,648 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,648 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,648 - MainThread - sqlglot - INFO - Applying array index offset (-1) (builders.py:1122)
+2026-09-02 20:30:09,932 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for in-memory database (connection.py:515)
+2026-09-02 20:30:09,933 - ThreadPoolExecutor-0_0 - sqlmesh.core.console - WARNING - Model '"swell_tags"."sqlmesh_example"."full_model"' was not found at /Users/aughra/github/swell-tag/tests/test_full_model.yaml (console.py:2335)
+2026-09-02 20:30:09,935 - MainThread - sqlmesh.core.config.connection - INFO - Creating new DuckDB adapter for data files: {'data/sqlmesh_state.db'} (connection.py:513)
+2026-09-02 20:30:12,300 - MainThread - sqlmesh.core.plan.evaluator - INFO - Evaluating plan stage BeforeAllStage (evaluator.py:123)
+2026-09-02 20:30:12,307 - MainThread - sqlmesh.core.context - INFO - Plan application failed. (context.py:1860)
+Traceback (most recent call last):
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/renderer.py", line 290, in _render
+    transformed_expressions = ensure_list(macro_evaluator.transform(expression))
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/macros.py", line 297, in transform
+    transformed = exp.replace_tree(
+        expression.copy(),
+        evaluate_macros,  # type: ignore[arg-type]
+        prune=lambda n: isinstance(n, exp.Lambda),
+    )
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlglot/expressions/builders.py", line 692, in replace_tree
+    new_node = fun(node)
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/macros.py", line 275, in evaluate_macros
+    raise SQLMeshError(f"Macro variable '{node.name}' is undefined.")
+sqlmesh.utils.errors.SQLMeshError: Macro variable 'load_s3_lambda_creds' is undefined.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/environment.py", line 322, in execute_environment_statements
+    for expr in statements.render(
+                ~~~~~~~~~~~~~~~~~^
+        runtime_stage=runtime_stage,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        selected_models=selected_models,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/environment.py", line 295, in render
+    return render_statements(
+        statements=getattr(self, runtime_stage.value),
+    ...<5 lines>...
+        **render_kwargs,
+    )
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/renderer.py", line 495, in render_statements
+    rendered = ExpressionRenderer(
+    ...<7 lines>...
+        normalize_identifiers=False,
+    ).render(**render_kwargs)
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/renderer.py", line 454, in render
+    expressions = super()._render(
+        start=start,
+    ...<5 lines>...
+        **kwargs,
+    )
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/renderer.py", line 292, in _render
+    raise_config_error(
+    ~~~~~~~~~~~~~~~~~~^
+        f"Failed to resolve macros for\n\n{expression.sql(dialect=self._dialect, pretty=True)}\n\n{ex}\n",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self._path,
+        ^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/utils/errors.py", line 227, in raise_config_error
+    raise error_type(msg, location=location)
+sqlmesh.utils.errors.ConfigError: Failed to resolve macros for
+
+@IF(@gateway_var = 'duckdb_s3', @load_s3_lambda_creds)
+
+Macro variable 'load_s3_lambda_creds' is undefined.
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/context.py", line 1852, in apply
+    self._apply(plan, circuit_breaker)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/context.py", line 2646, in _apply
+    self._scheduler.create_plan_evaluator(self).evaluate(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        plan.to_evaluatable(), circuit_breaker=circuit_breaker
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/plan/evaluator.py", line 105, in evaluate
+    self._evaluate_stages(plan_stages, plan)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/plan/evaluator.py", line 125, in _evaluate_stages
+    handler(stage, plan)
+    ~~~~~~~^^^^^^^^^^^^^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/plan/evaluator.py", line 128, in visit_before_all_stage
+    execute_environment_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        adapter=self.snapshot_evaluator.adapter,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        selected_models=plan.selected_models,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aughra/github/swell-tag/venv/lib/python3.14/site-packages/sqlmesh/core/environment.py", line 336, in execute_environment_statements
+    raise SQLMeshError(
+        f"An error occurred during rendering of the '{runtime_stage.value}' statements:\n\n{e}"
+    )
+sqlmesh.utils.errors.SQLMeshError: An error occurred during rendering of the 'before_all' statements:
+
+Failed to resolve macros for
+
+@IF(@gateway_var = 'duckdb_s3', @load_s3_lambda_creds)
+
+Macro variable 'load_s3_lambda_creds' is undefined.
+

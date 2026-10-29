@@ -42,6 +42,8 @@ resource "aws_rds_cluster" "swell_tags" {
   storage_encrypted  = true
   iam_database_authentication_enabled = true
 
+  enable_http_endpoint = true
+
   serverlessv2_scaling_configuration {
     max_capacity             = 1.0
     min_capacity             = 0.0
