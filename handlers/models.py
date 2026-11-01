@@ -1,12 +1,12 @@
 from typing import Optional, get_origin
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 
 @dataclass
 class EventModel:
-    baselines: list[str] = []
     models: list[str]
     ranges: list[list[int]]
+    baselines: list[str] = field(default_factory=list)
     environment: str = 'prod'
 
     def __post_init__(self):

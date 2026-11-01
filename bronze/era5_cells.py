@@ -82,8 +82,12 @@ def era5_netcdf_to_parquet(
             longitude=xr.DataArray(cells_lookup['lons'], dims='coastal_points'),
             method="nearest"
         )
-        subset.to_zarr(temp_zarr)
 
+        # https://github.com/casangi/xradio/issues/355
+        if "quantization_info" in ds: # this is causing that wierd null terminating byte guy...
+            subset = subset.drop_vars("quantization_info")
+
+        subset.to_zarr(temp_zarr, mode="w")
         print('MAKE GEOPARQUET')
 
         # with the zarr made, use that duckdb power to write a geoparquet i can just load in to the database.

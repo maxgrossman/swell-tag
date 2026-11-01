@@ -83,7 +83,7 @@
                                         "Overrides": {
                                             "ContainerOverrides": [
                                                 {
-                                                    "Name": "${handler_bronze_layer_worker}",
+                                                    "Name": "${handler_bronze_layer_worker_container_name}",
                                                     "Environment": [
                                                         {
                                                             "Name": "STATE_DATA",
@@ -106,7 +106,7 @@
                                                 "SecurityGroups": [
                                                     "${ecs_task_security_group}"
                                                 ],
-                                                "AssignPublicIp": "DISABLED"
+                                                "AssignPublicIp": "ENABLED"
                                             }
                                         }
                                     },

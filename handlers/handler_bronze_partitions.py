@@ -18,11 +18,12 @@ def handler(event, context):
         raise KeyError('You gave me an archive I do not know about.')
 
     # seems like that'll play nice....
-    num_tiles = event.get('num_tiles', 40) 
-    
+    num_tiles = event.get('num_tiles', 40)
+
     with duckdb.connect() as conn:
         setup(conn)
         partitions = partition_function(conn, S3_BUCKET, num_tiles)
+        print('got -> %s partitions' % str(len(partitions)))
         partition_manifests = []
         s3_client = boto3.client('s3')
         right_now = datetime.now(UTC)

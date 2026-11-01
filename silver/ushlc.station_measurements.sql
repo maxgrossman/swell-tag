@@ -27,7 +27,7 @@ hrly_and_stations as (
         ushlc.stations.geometry as geometry,
         ushlc.stations.h3_04
     from hrly
-    join ushlc.stations on hrly.station_id = printf('%03d', ushlc.stations.uh_id) || ushlc.stations.version
+    join ushlc.stations on hrly.station_id = ushlc.stations.station_id
 )
 INSERT INTO ushlc.station_measurements
 SELECT * FROM hrly_and_stations

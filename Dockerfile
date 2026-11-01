@@ -21,10 +21,5 @@ COPY --from=builder /opt/global-bundle.pem ${LAMBDA_TASK_ROOT}/
 COPY ./archive_builders ${LAMBDA_TASK_ROOT}/archive_builders
 COPY ./bronze ${LAMBDA_TASK_ROOT}/bronze
 COPY ./handlers ${LAMBDA_TASK_ROOT}/handlers
-COPY ./models ${LAMBDA_TASK_ROOT}/models
 COPY ./silver ${LAMBDA_TASK_ROOT}/silver
 COPY ./gold ${LAMBDA_TASK_ROOT}/gold
-COPY ./macros ${LAMBDA_TASK_ROOT}/macros
-COPY ./audits ${LAMBDA_TASK_ROOT}/audits
-COPY ./tests ${LAMBDA_TASK_ROOT}/tests
-COPY ./config.yaml ${LAMBDA_TASK_ROOT}

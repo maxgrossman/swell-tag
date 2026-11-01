@@ -34,7 +34,7 @@ coast_grids_grid_disks as (
 in_radius_stations as (
     select coast_grids_grid_disks.h3_04,
             in_radius_h3_04,
-            (printf('%03d', ushlc.stations.uh_id) || ushlc.stations.version) as station_id,
+            ushlc.stations.station_id,
             st_distance_sphere(
                 st_point(h3_cell_to_lng(coast_grids_grid_disks.h3_04),
                         h3_cell_to_lat(coast_grids_grid_disks.h3_04)),

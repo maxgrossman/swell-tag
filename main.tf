@@ -356,7 +356,7 @@ module "bronze_archive_us_west_2" {
   swell_tags_step_name = module.iam.swell_tags_step_role_name
   swell_tags_ecr_repo = module.ecr_us_east_1.swell_tags_ecr_repo
   security_groups     = [module.swell_tags_vpc_us_west_2.ecs_security_group_id]
-  subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.subnet_id]
+  subnet_ids          = [for subnet in module.swell_tags_vpc_subnets_us_east_1: subnet.public_subnet_id]
   step_function_asl = "bronze_archive.json_with_ecs.asl"
   state_machine_name = "bronze_archive_us_west_2"
   step_lambdas        = {
@@ -386,7 +386,7 @@ module "bronze_archive_us_west_2" {
   bronze_layer_ecs_cluster_arn = module.ecs_bronze_layer_us_west_2.bronze_layer_ecs_cluster_arn
   ecs_tasks                    = module.ecs_bronze_layer_us_west_2.ecs_tasks
   ecs_env_vars                 = {}
-  ecs_subnets                  = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.subnet_id]
+  ecs_subnets                  = [for subnet in module.swell_tags_vpc_subnets_us_west_2: subnet.public_subnet_id]
   ecs_security_group_id        = module.swell_tags_vpc_us_west_2.ecs_security_group_id
 }
 
