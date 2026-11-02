@@ -164,7 +164,8 @@ async function runLinesQuery(conn, lines) {
     ),
     h3_cell_years as (
       select h3_cells_with_params.h3_04, array_agg(date_trunc('year', swell_tags.timestamp_tz::timestamp)) as yrz
-      from 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell_tags
+      from
+      read_parquet('https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db_full/swell_tags.parquet') swell_tags
       join h3_cells_with_params on h3_cells_with_params.h3_04 = swell_tags.h3_04
       group by h3_cells_with_params.h3_04
     ),
@@ -204,7 +205,7 @@ async function runLinesQuery(conn, lines) {
             swell.swell_tag[3] > median(swell.swell_tag[3]) over (partition by swell.h3_04) as above_avg_period,
             case when above_avg_swell = 1 and above_avg_swell = above_avg_period  then 1 else 0 end as good_size
       from h3_cells_with_params
-      join 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell on swell.h3_04=h3_cells_with_params.h3_04
+      join read_parquet('https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db_full/swell_tags.parquet') swell on swell.h3_04=h3_cells_with_params.h3_04
       join intersecting_years on swell.timestamp_tz between min_year and max_year
     ),
     num_days as (
@@ -287,7 +288,7 @@ async function runPhotoQuery(conn, photos) {
     ),
     tags as (
       select *
-      from 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell
+      from read_parquet('https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db_full/swell_tags.parquet') swell
       join photos on swell.h3_04=photos.h3_04 and swell.timestamp_tz = photos.timestamp_tz_hr
     ),
     similar_tags as (
@@ -298,7 +299,7 @@ async function runPhotoQuery(conn, photos) {
         swell.timestamp_tz::varchar as matched_photo_timestamp, swell.swell_tag as swell_tag,
         round(array_distance(tags.swell_tag[2:]::double[6], swell.swell_tag[2:]::double[6]),2) as dist
       from tags
-      join 'https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db/swell_tag.parquet' swell
+      join read_parquet('https://pub-5dbb03b8867c49da87c12e33e5d5e1f0.r2.dev/db_full/swell_tags.parquet') swell
       on swell.h3_04=tags.h3_04 and array_distance(tags.swell_tag[2:]::double[6], swell.swell_tag[2:]::double[6]) < 5
     )
     select name, h3_polygon, photo_timestamp, matched_photo_timestamp, tags_swell_tag, swell_tag from similar_tags
