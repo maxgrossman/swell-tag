@@ -14,7 +14,9 @@ dependencies = [
     "rioxarray",
     "h5py",
     "pandas",
-    "geopandas"
+    "geopandas",
+    "exif",
+    "opencv-python-headless"
 ]
 
 [project.optional-dependencies]
