@@ -16,7 +16,8 @@ dependencies = [
     "pandas",
     "geopandas",
     "exif",
-    "opencv-python-headless"
+    "opencv-python-headless",
+    "copernicusmarine"
 ]
 
 [project.optional-dependencies]
